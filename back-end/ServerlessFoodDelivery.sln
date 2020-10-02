@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.19
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Orders", "ServerlessFoodDelivery.FunctionApp.Orders\ServerlessFoodDelivery.FunctionApp.Orders.csproj", "{5E94B96F-F386-45D1-9477-DB5E85BA78A9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Shared", "ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj", "{B12484A4-066F-4645-9A34-6CD9D6A42876}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Models", "ServerlessFoodDelivery.Models\ServerlessFoodDelivery.Models.csproj", "{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {95D00BB2-D790-4E21-8828-1E54B5A1983F}
+	EndGlobalSection
+EndGlobal
