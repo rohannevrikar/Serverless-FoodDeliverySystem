@@ -28,4 +28,10 @@ namespace ServerlessFoodDelivery.Models.Models
         DeliveryFailed = 4,
         Canceled = 5
     }
+
+    public class OrderLite
+    {
+        public string Id { get; set; }
+        public OrderStatus OrderStatus { get; set; }
+    }
 }

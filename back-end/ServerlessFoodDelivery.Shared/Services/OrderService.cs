@@ -12,12 +12,14 @@ namespace ServerlessFoodDelivery.Shared.Services
         private readonly Container _cosmosDbSingletonContainer;
         private readonly string _cosmosDbContainerName;
         private readonly ISettingService _settingService;
+        private readonly IStorageService _storageService;
 
 
-        public OrderService(ISettingService settingSerivce, ICosmosHelper cosmosHelper)
+        public OrderService(ISettingService settingSerivce, ICosmosHelper cosmosHelper, IStorageService storageService)
         {
              _settingService = settingSerivce;
              _cosmosDbContainerName = _settingService.GetCosmosDbOrderContainerName();
+            _storageService = storageService;
 
             if (_cosmosDbSingletonContainer == null)
                  _cosmosDbSingletonContainer = cosmosHelper.GetCosmosDatabaseInstance().CreateContainerIfNotExistsAsync(_cosmosDbContainerName, "/id").GetAwaiter().GetResult();
@@ -46,16 +48,24 @@ namespace ServerlessFoodDelivery.Shared.Services
             return Orders;
         }
 
-        public async Task<Order> PlaceNewOrder(Order order)
-        {
-            return await _cosmosDbSingletonContainer.CreateItemAsync(order);
-        }
+        //public async Task<Order> PlaceNewOrder(Order order)
+        //{
+        //    Order placedOrder = await _cosmosDbSingletonContainer.CreateItemAsync(order);
 
-        public async Task<Order> UpdateOrder(string orderId, OrderStatus orderStatus)
-        {
-            Order order = await _cosmosDbSingletonContainer.ReadItemAsync<Order>(orderId, new PartitionKey(orderId));
-            order.OrderStatus = orderStatus;
-            return await _cosmosDbSingletonContainer.ReplaceItemAsync(order, orderId, new PartitionKey(orderId)); 
+        //    if(placedOrder != null)
+        //        await _storageService.EnqueueOrderForStatusUpdate(placedOrder.Id, placedOrder.OrderStatus);
+
+        //    return placedOrder;
+        //}
+
+        public async Task<Order> UpsertOrder(Order order)
+        {           
+            Order updatedOrder = await _cosmosDbSingletonContainer.UpsertItemAsync(order);
+
+            if(updatedOrder != null)            
+                await _storageService.EnqueueOrderForStatusUpdate(updatedOrder.Id, updatedOrder.OrderStatus);
+            
+            return updatedOrder;
         }
       
     }
@@ -65,7 +75,8 @@ namespace ServerlessFoodDelivery.Shared.Services
 
         Task<Order> GetOrder(string orderId);
         Task<List<Order>> GetOrders();
-        Task<Order> UpdateOrder(string orderId, OrderStatus orderStatus);
-        Task<Order> PlaceNewOrder(Order order);
+        //Task<Order> UpdateOrder(string orderId, OrderStatus orderStatus);
+        //Task<Order> PlaceNewOrder(Order order);
+        Task<Order> UpsertOrder(Order order);
     }
 }

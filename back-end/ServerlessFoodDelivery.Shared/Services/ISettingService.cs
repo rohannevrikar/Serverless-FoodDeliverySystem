@@ -6,6 +6,7 @@ namespace ServerlessFoodDelivery.Shared.Services
 {
     public interface ISettingService
     {
+        //Cosmos
         string GetCosmosDbEndpointUri();
         string GetCosmosDbApiKey();
         string GetCosmosDbConnectionString();
@@ -14,6 +15,14 @@ namespace ServerlessFoodDelivery.Shared.Services
         string GetCosmosDbOrderContainerName();
         string GetCosmosDbRestaurantContainerName();
 
+        //Storage Account
+
+        string GetStorageAccount();
+        string GetOrderNewQueueName();
+        string GetOrderAcceptedQueueName();
+        string GetOrderOutForDeliveryQueueName();
+        string GetOrderDeliveredQueueName();
+        string GetOrderCanceledQueueName();
 
     }
 }

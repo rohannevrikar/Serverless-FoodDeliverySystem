@@ -13,6 +13,7 @@ namespace FunctionApp.Orders
             builder.Services.AddSingleton<ICosmosHelper, CosmosHelper>();
             builder.Services.AddSingleton<ISettingService, SettingService>();
             builder.Services.AddSingleton<ICustomerService, CustomerService>();
+            builder.Services.AddSingleton<IStorageService, StorageService>();
             builder.Services.AddSingleton<IOrderService, OrderService>();
             builder.Services.AddSingleton<IRestaurantService, RestaurantService>();
         }
