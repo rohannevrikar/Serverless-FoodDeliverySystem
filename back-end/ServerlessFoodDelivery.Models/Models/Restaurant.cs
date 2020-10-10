@@ -11,30 +11,25 @@ namespace ServerlessFoodDelivery.Models.Models
         public string Id { get; set; }
 
         [JsonProperty(PropertyName = "menu")]
-        public Menu Menu{ get; set; }
+        public List<MenuItem> MenuItems{ get; set; }
 
         [JsonProperty(PropertyName = "isAcceptingOrders")]
         public bool IsAcceptingOrders { get; set; }
     }
-
-    public class Menu
-    {
-        [JsonProperty(PropertyName = "id")]
-        public string Id{ get; set; }
-
-        [JsonProperty(PropertyName = "item")]
-        public string Item { get; set; }
-
-        [JsonProperty(PropertyName = "price")]
-        public int Price { get; set; }
-
-        [JsonProperty(PropertyName = "dishType")]
-        public DishType DishType{ get; set; }
-    }
+   
     public enum DishType
     {
         Veg = 0,
         NonVeg = 1,
         ContainsEgg = 2
+    }
+    public class RestaurantDetails
+    {
+        [JsonProperty(PropertyName = "id")]
+        public string Id { get; set; }
+
+        [JsonProperty(PropertyName = "restaurantName")]
+        public string RestaurantName { get; set; }
+
     }
 }

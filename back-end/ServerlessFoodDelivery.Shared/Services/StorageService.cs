@@ -25,30 +25,26 @@ namespace ServerlessFoodDelivery.Shared.Services
             _settingService = settingService;
         }
 
-        public async Task EnqueueOrderForStatusUpdate(string orderId, OrderStatus orderStatus)
+        public async Task EnqueueOrderForStatusUpdate(Order order)
         {
             await InitializeStorage();
 
-            var queueMessage = new CloudQueueMessage(JsonConvert.SerializeObject(new OrderLite
-            {
-                Id = orderId,
-                OrderStatus = orderStatus
-            }));
+            var queueMessage = new CloudQueueMessage(JsonConvert.SerializeObject(order));
 
 
-            if (orderStatus == OrderStatus.New)
+            if (order.OrderStatus == Models.Enums.OrderStatus.New)
                 await _orderNewQueue.AddMessageAsync(queueMessage);
 
-            else if (orderStatus == OrderStatus.InProgress)
+            else if (order.OrderStatus == Models.Enums.OrderStatus.Accepted)
                 await _orderAcceptedQueue.AddMessageAsync(queueMessage);
 
-            else if (orderStatus == OrderStatus.OutForDelivery)
+            else if (order.OrderStatus == Models.Enums.OrderStatus.OutForDelivery)
                 await _orderOutForDeliveryQueue.AddMessageAsync(queueMessage);
 
-            else if (orderStatus == OrderStatus.Delivered)
+            else if (order.OrderStatus == Models.Enums.OrderStatus.Delivered)
                 await _orderDeliveredQueue.AddMessageAsync(queueMessage);  
 
-            else if(orderStatus == OrderStatus.Canceled)
+            else if(order.OrderStatus == Models.Enums.OrderStatus.Canceled)
                 await _orderCanceledQueue.AddMessageAsync(queueMessage);
         }
 
@@ -107,7 +103,7 @@ namespace ServerlessFoodDelivery.Shared.Services
 
     public interface IStorageService
     {
-        Task EnqueueOrderForStatusUpdate(string orderId, OrderStatus orderStatus);
+        Task EnqueueOrderForStatusUpdate(Order order);
     }
 }
 

@@ -48,26 +48,25 @@ namespace ServerlessFoodDelivery.Shared.Services
             return Orders;
         }
 
-        //public async Task<Order> PlaceNewOrder(Order order)
-        //{
-        //    Order placedOrder = await _cosmosDbSingletonContainer.CreateItemAsync(order);
-
-        //    if(placedOrder != null)
-        //        await _storageService.EnqueueOrderForStatusUpdate(placedOrder.Id, placedOrder.OrderStatus);
-
-        //    return placedOrder;
-        //}
-
-        public async Task<Order> UpsertOrder(Order order)
-        {           
-            Order updatedOrder = await _cosmosDbSingletonContainer.UpsertItemAsync(order);
-
-            if(updatedOrder != null)            
-                await _storageService.EnqueueOrderForStatusUpdate(updatedOrder.Id, updatedOrder.OrderStatus);
-            
-            return updatedOrder;
+        public async Task<Order> PlaceNewOrder(Order order)
+        {
+            try
+            {
+                Order placedOrder = await _cosmosDbSingletonContainer.CreateItemAsync(order);
+                return placedOrder;
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+         
         }
-      
+
+        public async Task<Order> UpdateOrder(Order order)
+        {           
+            Order updatedOrder = await _cosmosDbSingletonContainer.ReplaceItemAsync(order, order.Id);            
+            return updatedOrder;
+        }     
     }
 
     public interface IOrderService
@@ -75,8 +74,7 @@ namespace ServerlessFoodDelivery.Shared.Services
 
         Task<Order> GetOrder(string orderId);
         Task<List<Order>> GetOrders();
-        //Task<Order> UpdateOrder(string orderId, OrderStatus orderStatus);
-        //Task<Order> PlaceNewOrder(Order order);
-        Task<Order> UpsertOrder(Order order);
+        Task<Order> UpdateOrder(Order order);
+        Task<Order> PlaceNewOrder(Order order);
     }
 }

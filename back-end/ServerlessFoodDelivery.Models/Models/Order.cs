@@ -11,27 +11,23 @@ namespace ServerlessFoodDelivery.Models.Models
         public string Id { get; set; }
 
         [JsonProperty(PropertyName = "restaurant")]
-        public Restaurant Restaurant { get; set; }
+        public RestaurantDetails RestaurantDetails { get; set; }
 
         [JsonProperty(PropertyName = "customer")]
         public Customer Customer { get; set; }
 
         [JsonProperty(PropertyName = "orderStatus")]
-        public OrderStatus OrderStatus { get; set; }
+        public Enums.OrderStatus OrderStatus { get; set; }
+
+        [JsonProperty(PropertyName = "orderItems")]
+        public List<MenuItem> OrderItems { get; set; }
     }
-    public enum OrderStatus
-    {
-        New = 0,
-        InProgress = 1,
-        OutForDelivery = 2,
-        Delivered = 3,
-        DeliveryFailed = 4,
-        Canceled = 5
-    }
+    
 
     public class OrderLite
     {
         public string Id { get; set; }
-        public OrderStatus OrderStatus { get; set; }
+        public Enums.OrderStatus OrderStatus { get; set; }
     }
+ 
 }

@@ -15,8 +15,10 @@ namespace FunctionApp.Orders
     public class OrderFunction
     {
         private readonly IOrderService _orderService;
-        public OrderFunction(IOrderService orderService)
+        private readonly IStorageService _storageService;
+        public OrderFunction(IOrderService orderService, IStorageService storageService)
         {
+            _storageService = storageService;
             _orderService = orderService;
         }
 
@@ -28,39 +30,58 @@ namespace FunctionApp.Orders
             return new OkObjectResult(await _orderService.GetOrder(orderId));
         }
 
-        [FunctionName("UpsertOrder")]
-        public async Task<IActionResult> UpsertOrder([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")] HttpRequest req,
+
+        [FunctionName("PlaceNewOrder")]
+        public async Task<IActionResult> PlaceNewOrder([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")] HttpRequest req,
            ILogger log)
         {
-            string requestBody = new StreamReader(req.Body).ReadToEnd();
-            Order order = JsonConvert.DeserializeObject<Order>(requestBody);
-            return new OkObjectResult(await _orderService.UpsertOrder(order));
+            try
+            {
+                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                Order order = JsonConvert.DeserializeObject<Order>(requestBody);
+                await _orderService.PlaceNewOrder(order);
+                await _storageService.EnqueueOrderForStatusUpdate(order);
+                return new OkObjectResult(order);
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+          
         }
 
         [FunctionName("OrderAccepted")]
-        public async Task<IActionResult> OrderAccepted([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders/accepted/{orderId}")] HttpRequest req,
+        public async Task<IActionResult> OrderAccepted([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/accepted/{orderId}")] HttpRequest req,
              string orderId,
         ILogger log)
         {
             Order order = await _orderService.GetOrder(orderId);
+            order.OrderStatus = ServerlessFoodDelivery.Models.Enums.OrderStatus.Accepted;
+            await _orderService.UpdateOrder(order);
+
+            await _storageService.EnqueueOrderForStatusUpdate(order);
             return new OkObjectResult(order);
         }
 
         [FunctionName("OrderOutForDelivery")]
-        public async Task<IActionResult> OrderOutForDelivery([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders/outForDelivery/{orderId}")] HttpRequest req,
+        public async Task<IActionResult> OrderOutForDelivery([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/outForDelivery/{orderId}")] HttpRequest req,
             string orderId,
        ILogger log)
         {
             Order order = await _orderService.GetOrder(orderId);
-            return new OkObjectResult(order);
+            order.OrderStatus = ServerlessFoodDelivery.Models.Enums.OrderStatus.OutForDelivery;
+            await _orderService.UpdateOrder(order);
+            await _storageService.EnqueueOrderForStatusUpdate(order);
+            return new OkObjectResult("Ok");
         }
 
         [FunctionName("OrderDelivered")]
-        public async Task<IActionResult> OrderDelivered([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders/delivered/{orderId}")] HttpRequest req,
+        public async Task<IActionResult> OrderDelivered([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/delivered/{orderId}")] HttpRequest req,
             string orderId,
        ILogger log)
         {
             Order order = await _orderService.GetOrder(orderId);
+            await _storageService.EnqueueOrderForStatusUpdate(order);
             return new OkObjectResult(order);
         }
 

@@ -28,6 +28,6 @@ namespace ServerlessFoodDelivery.Models.Models
         [JsonProperty(PropertyName = "isBlocked")]
         public bool IsBlocked { get; set; }
     }
-
+  
 
 }
