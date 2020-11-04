@@ -20,7 +20,7 @@ namespace ServerlessFoodDelivery.Shared.Services
         private const string StorageAccountKey = "AzureWebJobsStorage";
         private const string OrderNewQueueKey = "OrderNewQueue";
         private const string OrderAcceptedQueueKey = "OrderAcceptedQueue";
-        private const string OrderOutForDeliveredQueueKey = "OrderOutForDeliveredQueue";
+        private const string OrderOutForDeliveryQueueKey = "OrderOutForDeliveryQueue";
         private const string OrderDeliveredQueueKey = "OrderDeliveredQueue";
         private const string OrderCanceledQueueKey = "OrderCanceledQueue";
 
@@ -77,7 +77,7 @@ namespace ServerlessFoodDelivery.Shared.Services
 
         public string GetOrderOutForDeliveryQueueName()
         {
-            return GetEnvironmentVariable(OrderOutForDeliveredQueueKey);
+            return GetEnvironmentVariable(OrderOutForDeliveryQueueKey);
         }
 
         public string GetOrderDeliveredQueueName()

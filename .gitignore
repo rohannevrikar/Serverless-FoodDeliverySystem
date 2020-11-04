@@ -1,0 +1,16 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/.dockerignore
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/deploy.yml
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/Dockerfile
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/kubectl
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/secret.yml
+/back-end/ServerlessFoodDelivery.FunctionApp.Orders/k8s-deployments
+/back-end/ServerlessFoodDelivery.FunctionApp.Orders/Properties/launchSettings.json
+/back-end/ServerlessFoodDelivery.FunctionApp.Orders/deploy.yaml
+/back-end/ServerlessFoodDelivery.FunctionApp.Orders/Dockerfile
+/back-end/.dockerignore
+/back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/Properties/PublishProfiles
+/back-end/ServerlessFoodDelivery.FunctionApp.Orders/Properties/PublishProfiles

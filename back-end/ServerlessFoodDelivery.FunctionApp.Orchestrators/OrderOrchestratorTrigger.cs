@@ -25,6 +25,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
+                log.LogInformation("Queue triggered, new order...");
                 var instanceId = order.Id;
                 await StartInstance(context, order, instanceId, log);
             }
@@ -40,6 +41,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [QueueTrigger("%OrderAcceptedQueue%", Connection = "AzureWebJobsStorage")] Order order,
         ILogger log)
         {
+            log.LogInformation("Raising accepted event for instance..." + order.Id);
             await context.RaiseEventAsync(order.Id, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
         }
 
@@ -50,7 +52,19 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
        ILogger log)
         {
             string instanceId = $"{order.Id}-accepted";
+            log.LogInformation("Raising out for delivery event for instance..." + instanceId);
             await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+        }
+
+        [FunctionName("DeliveredOrderQueueTrigger")]
+        public static async Task DeliveredOrderQueueTrigger(
+     [DurableClient] IDurableOrchestrationClient context,
+     [QueueTrigger("%OrderDeliveredQueue%", Connection = "AzureWebJobsStorage")] Order order,
+     ILogger log)
+        {
+            string instanceId = $"{order.Id}-out-for-delivery";
+            log.LogInformation("Raising delivered event for instance..." + instanceId);
+            await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
         }
 
         private static async Task StartInstance(IDurableOrchestrationClient context, Order order, string instanceId, ILogger log)

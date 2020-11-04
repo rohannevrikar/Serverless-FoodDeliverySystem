@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using ServerlessFoodDelivery.Shared.Services;
 using ServerlessFoodDelivery.Models.Models;
+using Microsoft.Azure.Cosmos;
+using System.Threading;
 
 namespace FunctionApp.Orders
 {
@@ -37,14 +39,28 @@ namespace FunctionApp.Orders
         {
             try
             {
-                string requestBody = new StreamReader(req.Body).ReadToEnd();
+                log.LogInformation("Received request...");
+                string requestBody = new StreamReader(req.Body).ReadToEnd();                
                 Order order = JsonConvert.DeserializeObject<Order>(requestBody);
-                await _orderService.PlaceNewOrder(order);
-                await _storageService.EnqueueOrderForStatusUpdate(order);
+
+                if(order != null)
+                {
+                    log.LogInformation("Received request...");
+                    await _storageService.EnqueueNewOrder(order);
+                    log.LogInformation("Added to queue...");
+                }
+                    
+
+                //await _orderService.PlaceNewOrder(order);
+                //log.LogInformation("Order placed...");
+
+               
+
                 return new OkObjectResult(order);
             }
             catch(Exception ex)
             {
+                log.LogError(ex.ToString());
                 throw ex;
             }
           
@@ -55,12 +71,51 @@ namespace FunctionApp.Orders
              string orderId,
         ILogger log)
         {
-            Order order = await _orderService.GetOrder(orderId);
-            order.OrderStatus = ServerlessFoodDelivery.Models.Enums.OrderStatus.Accepted;
-            await _orderService.UpdateOrder(order);
+            Order order = null;
+            try
+            {
+                order = await _orderService.GetOrder(orderId);
+                await _storageService.EnqueueAcceptOrder(order);
+                return new OkObjectResult(order);
+            }
+            catch (CosmosException ex)
+            {
+                log.LogError(ex.ToString());
+                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    CosmosException cosmosException = null;
+                    log.LogError("Status code is 404");
+                    int attempts = 0;
+                    while (attempts < 5)
+                    {
+                        cosmosException = null;
+                        Thread.Sleep(3000);
+                        log.LogInformation("Attempt count: " + attempts);
+                        try
+                        {
+                            order = await _orderService.GetOrder(orderId);
+                            log.LogInformation("Queuing...");
+                            await _storageService.EnqueueAcceptOrder(order);
+                            return new OkObjectResult(order);
 
-            await _storageService.EnqueueOrderForStatusUpdate(order);
-            return new OkObjectResult(order);
+                        }
+                        catch (CosmosException cosmosEx)
+                        {
+                            log.LogError("Caught cosmos exception");
+                            cosmosException = cosmosEx;
+                        }
+
+                        attempts += 1;
+                    }
+                    if (cosmosException != null)
+                    {
+                        throw new Exception("Something went wrong while reading from database");
+                    }
+                }
+
+            }
+           
+            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
 
         [FunctionName("OrderOutForDelivery")]
@@ -68,11 +123,50 @@ namespace FunctionApp.Orders
             string orderId,
        ILogger log)
         {
-            Order order = await _orderService.GetOrder(orderId);
-            order.OrderStatus = ServerlessFoodDelivery.Models.Enums.OrderStatus.OutForDelivery;
-            await _orderService.UpdateOrder(order);
-            await _storageService.EnqueueOrderForStatusUpdate(order);
-            return new OkObjectResult("Ok");
+            Order order = null;
+            try
+            {
+                order = await _orderService.GetOrder(orderId);
+                await _storageService.EnqueueOutForDeliveryOrder(order);
+                return new OkObjectResult(order);
+            }
+            catch (CosmosException ex)
+            {
+                log.LogError(ex.ToString());
+                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    CosmosException cosmosException = null;
+                    log.LogError("Status code is 404");
+                    int attempts = 0;
+                    while (attempts < 5)
+                    {
+                        cosmosException = null;
+                        Thread.Sleep(3000);
+                        log.LogInformation("Attempt count: " + attempts);
+                        try
+                        {
+                            order = await _orderService.GetOrder(orderId);
+                            log.LogInformation("Queuing...");
+                            await _storageService.EnqueueOutForDeliveryOrder(order);
+                            return new OkObjectResult(order);
+
+                        }
+                        catch (CosmosException cosmosEx)
+                        {
+                            log.LogError("Caught cosmos exception");
+                            cosmosException = cosmosEx;
+                        }
+
+                        attempts += 1;
+                    }
+                    if (cosmosException != null)
+                    {
+                        throw new Exception("Something went wrong while reading from database");
+                    }
+                }
+
+            }
+            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
 
         [FunctionName("OrderDelivered")]
@@ -80,10 +174,52 @@ namespace FunctionApp.Orders
             string orderId,
        ILogger log)
         {
-            Order order = await _orderService.GetOrder(orderId);
-            await _storageService.EnqueueOrderForStatusUpdate(order);
-            return new OkObjectResult(order);
-        }
+            Order order = null;
+            try
+            {
+                order = await _orderService.GetOrder(orderId);
+                await _storageService.EnqueueDeliveredOrder(order);
+                return new OkObjectResult(order);
+            }
+            catch (CosmosException ex)
+            {
+                log.LogError(ex.ToString());
+                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    CosmosException cosmosException = null;
+                    log.LogError("Status code is 404");
+                    int attempts = 0;
+                    while (attempts < 5)
+                    {
+                        cosmosException = null;
+                        Thread.Sleep(3000);
+                        log.LogInformation("Attempt count: " + attempts);
+                        try
+                        {
+                            order = await _orderService.GetOrder(orderId);
+                            log.LogInformation("Queuing...");
+                            await _storageService.EnqueueDeliveredOrder(order);
+                            return new OkObjectResult(order);
 
+                        }
+                        catch(CosmosException cosmosEx)
+                        {
+                            log.LogError("Caught cosmos exception");
+                            cosmosException = cosmosEx;
+                        }
+
+                        attempts += 1;
+                    }
+                    if (cosmosException != null)
+                    {
+                        throw new Exception("Something went wrong while reading from database");
+                    }
+                }
+
+            }
+            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+        }
+       
     }
+
 }
