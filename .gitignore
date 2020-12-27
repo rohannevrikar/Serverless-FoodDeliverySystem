@@ -14,3 +14,4 @@
 /back-end/.dockerignore
 /back-end/ServerlessFoodDelivery.FunctionApp.Orchestrators/Properties/PublishProfiles
 /back-end/ServerlessFoodDelivery.FunctionApp.Orders/Properties/PublishProfiles
+/back-end/ServerlessFoodDelivery.FunctionApp.Mock/Properties/PublishProfiles

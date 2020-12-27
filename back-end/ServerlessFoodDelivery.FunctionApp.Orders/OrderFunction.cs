@@ -39,15 +39,16 @@ namespace FunctionApp.Orders
         {
             try
             {
-                log.LogInformation("Received request...");
                 string requestBody = new StreamReader(req.Body).ReadToEnd();                
                 Order order = JsonConvert.DeserializeObject<Order>(requestBody);
+               
 
-                if(order != null)
+
+                if (order != null)
                 {
-                    log.LogInformation("Received request...");
+                    log.LogInformation(order.Id + " Received request... " + DateTime.UtcNow.ToString());
                     await _storageService.EnqueueNewOrder(order);
-                    log.LogInformation("Added to queue...");
+                    log.LogInformation(order.Id + " Added to queue... " + DateTime.UtcNow.ToString());
                 }
                     
 
@@ -74,8 +75,10 @@ namespace FunctionApp.Orders
             Order order = null;
             try
             {
-                order = await _orderService.GetOrder(orderId);
+                log.LogInformation(orderId + " AcceptOrderAPICallTime: " + DateTime.UtcNow.ToString());
+                order = await _orderService.GetOrder(orderId);                
                 await _storageService.EnqueueAcceptOrder(order);
+                log.LogInformation(orderId + " accepted order added to queue... " + DateTime.UtcNow.ToString());
                 return new OkObjectResult(order);
             }
             catch (CosmosException ex)
@@ -89,12 +92,12 @@ namespace FunctionApp.Orders
                     while (attempts < 5)
                     {
                         cosmosException = null;
-                        Thread.Sleep(3000);
-                        log.LogInformation("Attempt count: " + attempts);
+                        Thread.Sleep(5000);
+                        log.LogInformation(orderId + " Attempt count: " + attempts);
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation("Queuing...");
+                            log.LogInformation(orderId + "Queuing to accept order...");
                             await _storageService.EnqueueAcceptOrder(order);
                             return new OkObjectResult(order);
 
@@ -109,7 +112,7 @@ namespace FunctionApp.Orders
                     }
                     if (cosmosException != null)
                     {
-                        throw new Exception("Something went wrong while reading from database");
+                        throw new Exception(orderId + " Something went wrong while reading from database: " + cosmosException.Message);
                     }
                 }
 
@@ -126,8 +129,10 @@ namespace FunctionApp.Orders
             Order order = null;
             try
             {
+                log.LogInformation(orderId + " OutForDeliveryOrderAPICallTime: " + DateTime.UtcNow.ToString());
                 order = await _orderService.GetOrder(orderId);
                 await _storageService.EnqueueOutForDeliveryOrder(order);
+                log.LogInformation(orderId + " out for delivery order added to queue... " + DateTime.UtcNow.ToString());
                 return new OkObjectResult(order);
             }
             catch (CosmosException ex)
@@ -141,12 +146,12 @@ namespace FunctionApp.Orders
                     while (attempts < 5)
                     {
                         cosmosException = null;
-                        Thread.Sleep(3000);
-                        log.LogInformation("Attempt count: " + attempts);
+                        Thread.Sleep(5000);
+                        log.LogInformation(orderId + " Attempt count: " + attempts);
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation("Queuing...");
+                            log.LogInformation(orderId + "Queuing to out for delivery order...");
                             await _storageService.EnqueueOutForDeliveryOrder(order);
                             return new OkObjectResult(order);
 
@@ -161,7 +166,7 @@ namespace FunctionApp.Orders
                     }
                     if (cosmosException != null)
                     {
-                        throw new Exception("Something went wrong while reading from database");
+                        throw new Exception(orderId + " Something went wrong while reading from database: " + cosmosException.Message);
                     }
                 }
 
@@ -177,8 +182,11 @@ namespace FunctionApp.Orders
             Order order = null;
             try
             {
+                log.LogInformation(orderId + " DeliveredOrderAPICallTime: " + DateTime.UtcNow.ToString());
                 order = await _orderService.GetOrder(orderId);
                 await _storageService.EnqueueDeliveredOrder(order);
+                log.LogInformation(orderId + " delivered order added to queue... " + DateTime.UtcNow.ToString());
+
                 return new OkObjectResult(order);
             }
             catch (CosmosException ex)
@@ -192,12 +200,12 @@ namespace FunctionApp.Orders
                     while (attempts < 5)
                     {
                         cosmosException = null;
-                        Thread.Sleep(3000);
-                        log.LogInformation("Attempt count: " + attempts);
+                        Thread.Sleep(5000);
+                        log.LogInformation(orderId + "Attempt count: " + attempts);
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation("Queuing...");
+                            log.LogInformation(orderId + "Queuing to delivered order...");
                             await _storageService.EnqueueDeliveredOrder(order);
                             return new OkObjectResult(order);
 
@@ -212,7 +220,7 @@ namespace FunctionApp.Orders
                     }
                     if (cosmosException != null)
                     {
-                        throw new Exception("Something went wrong while reading from database");
+                        throw new Exception(orderId + " Something went wrong while reading from database: " + cosmosException.Message);
                     }
                 }
 

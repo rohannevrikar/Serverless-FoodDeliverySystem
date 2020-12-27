@@ -26,7 +26,7 @@ namespace ServerlessFoodDelivery.Shared.Services
 
         }
         public async Task<Order> GetOrder(string orderId)
-        {
+        {           
             return await _cosmosDbSingletonContainer.ReadItemAsync<Order>(orderId, new PartitionKey(orderId));
         }
 

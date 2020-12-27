@@ -16,7 +16,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 {
     public class OrderOrchestratorTrigger
     {
-      
+
         [FunctionName("PlaceNewOrderQueueTrigger")]
         public static async Task PlaceNewOrderQueueTrigger(
            [DurableClient] IDurableOrchestrationClient context,
@@ -25,8 +25,9 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
-                log.LogInformation("Queue triggered, new order...");
+                log.LogInformation(order.Id + " Queue triggered, new order... " + DateTime.UtcNow.ToString());
                 var instanceId = order.Id;
+                log.LogInformation(instanceId + " NewOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
                 await StartInstance(context, order, instanceId, log);
             }
             catch (Exception ex)
@@ -41,8 +42,51 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [QueueTrigger("%OrderAcceptedQueue%", Connection = "AzureWebJobsStorage")] Order order,
         ILogger log)
         {
-            log.LogInformation("Raising accepted event for instance..." + order.Id);
-            await context.RaiseEventAsync(order.Id, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
+            try
+            {
+                log.LogInformation("Raising accepted event for instance..." + order.Id + " " + DateTime.UtcNow.ToString());
+                await context.RaiseEventAsync(order.Id, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
+            }
+            catch (ArgumentException ex)
+            {
+                log.LogError("Instance not found: " + ex.ToString());
+
+                ArgumentException argumentException = null;
+                int attempts = 0;
+                while (attempts < 5)
+                {
+                    argumentException = null;
+                    Thread.Sleep(5000);
+                    log.LogInformation("Attempt count: " + attempts);
+                    try
+                    {
+
+                        var reportStatus = await context.GetStatusAsync(order.Id);
+                        if(reportStatus.RuntimeStatus == OrchestrationRuntimeStatus.Running)
+                        {
+                            await context.RaiseEventAsync(order.Id, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
+                            break;
+                        }                           
+                     
+
+                    }
+                    catch (ArgumentException argException)
+                    {
+                        log.LogError("Caught argument exception");
+                        argumentException = argException;
+                    }
+
+                    attempts += 1;
+                }
+                
+                if (argumentException != null)
+                {
+                    throw new Exception("Something went wrong while raising event: " + argumentException.Message);
+                }
+            }
+          
+
+
         }
 
         [FunctionName("OutForDeliveryOrderQueueTrigger")]
@@ -52,8 +96,49 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
        ILogger log)
         {
             string instanceId = $"{order.Id}-accepted";
-            log.LogInformation("Raising out for delivery event for instance..." + instanceId);
-            await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+            try
+            {
+                log.LogInformation("Raising out for delivery event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
+                await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+            }
+            catch (ArgumentException ex)
+            {
+                log.LogError("Instance not found: " + ex.ToString());
+
+                ArgumentException argumentException = null;
+                int attempts = 0;
+                while (attempts < 5)
+                {
+                    argumentException = null;
+                    Thread.Sleep(5000);
+                    log.LogInformation("Attempt count: " + attempts);
+                    try
+                    {
+
+                        var reportStatus = await context.GetStatusAsync(order.Id);
+                        if (reportStatus.RuntimeStatus == OrchestrationRuntimeStatus.Running)
+                        {
+                            await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+                            break;
+                        }
+
+                    }               
+                    catch (ArgumentException argException)
+                    {
+                        log.LogError("Caught argument exception");
+                        argumentException = argException;
+                    }
+
+                    attempts += 1;
+                }
+                if (argumentException != null)
+                {
+                    throw new Exception("Something went wrong while raising event: " + argumentException.Message);
+                }
+
+
+            }
+
         }
 
         [FunctionName("DeliveredOrderQueueTrigger")]
@@ -63,8 +148,50 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
      ILogger log)
         {
             string instanceId = $"{order.Id}-out-for-delivery";
-            log.LogInformation("Raising delivered event for instance..." + instanceId);
-            await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+
+            try
+            {
+                log.LogInformation("Raising delivered event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
+                await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+            }
+            catch (ArgumentException ex)
+            {
+                log.LogError("Instance not found: " + ex.ToString());
+
+                ArgumentException argumentException = null;
+                int attempts = 0;
+                while (attempts < 5)
+                {
+                    argumentException = null;
+                    Thread.Sleep(5000);
+                    log.LogInformation("Attempt count: " + attempts);
+                    try
+                    {
+
+                        var reportStatus = await context.GetStatusAsync(order.Id);
+                        if (reportStatus.RuntimeStatus == OrchestrationRuntimeStatus.Running)
+                        {
+                            await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+                            break;
+                        }
+
+
+                    }                  
+                    catch (ArgumentException argException)
+                    {
+                        log.LogError("Caught argument exception");
+                        argumentException = argException;
+                    }
+
+                    attempts += 1;
+                }
+                if (argumentException != null)
+                {
+                    throw new Exception("Something went wrong while raising event: " + argumentException.Message);
+                }
+
+
+            }
         }
 
         private static async Task StartInstance(IDurableOrchestrationClient context, Order order, string instanceId, ILogger log)
