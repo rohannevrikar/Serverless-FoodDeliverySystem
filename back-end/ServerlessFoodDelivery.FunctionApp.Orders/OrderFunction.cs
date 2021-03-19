@@ -34,23 +34,27 @@ namespace FunctionApp.Orders
 
 
         [FunctionName("PlaceNewOrder")]
-        public async Task<IActionResult> PlaceNewOrder([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")] HttpRequest req,
+        public async Task<IActionResult> PlaceNewOrder([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")] 
+        HttpRequest req,
+            [ServiceBus("%OrderNewQueue%", Connection = "ServiceBusConnection")] IAsyncCollector<dynamic> serviceBusQueue,
            ILogger log)
         {
             try
             {
                 string requestBody = new StreamReader(req.Body).ReadToEnd();                
                 Order order = JsonConvert.DeserializeObject<Order>(requestBody);
-               
+
 
 
                 if (order != null)
                 {
-                    log.LogInformation(order.Id + " Received request... " + DateTime.UtcNow.ToString());
-                    await _storageService.EnqueueNewOrder(order);
-                    log.LogInformation(order.Id + " Added to queue... " + DateTime.UtcNow.ToString());
+                    //log.LogInformation(order.Id + " Received request... " + DateTime.UtcNow.ToString());
+
+                    await serviceBusQueue.AddAsync(order);
+                    //await _storageService.EnqueueNewOrder(order);
+                    //log.LogInformation(order.Id + " Added to queue... " + DateTime.UtcNow.ToString());
                 }
-                    
+
 
                 //await _orderService.PlaceNewOrder(order);
                 //log.LogInformation("Order placed...");
@@ -69,16 +73,18 @@ namespace FunctionApp.Orders
 
         [FunctionName("OrderAccepted")]
         public async Task<IActionResult> OrderAccepted([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/accepted/{orderId}")] HttpRequest req,
-             string orderId,
+            [ServiceBus("%OrderAcceptedQueue%", Connection = "ServiceBusConnection")] IAsyncCollector<dynamic> serviceBusQueue,
+            string orderId,
         ILogger log)
         {
             Order order = null;
             try
             {
-                log.LogInformation(orderId + " AcceptOrderAPICallTime: " + DateTime.UtcNow.ToString());
-                order = await _orderService.GetOrder(orderId);                
-                await _storageService.EnqueueAcceptOrder(order);
-                log.LogInformation(orderId + " accepted order added to queue... " + DateTime.UtcNow.ToString());
+                //log.LogInformation(orderId + " AcceptOrderAPICallTime: " + DateTime.UtcNow.ToString());
+                order = await _orderService.GetOrder(orderId);
+                await serviceBusQueue.AddAsync(order);
+                //await _storageService.EnqueueAcceptOrder(order);
+                //log.LogInformation(orderId + " accepted order added to queue... " + DateTime.UtcNow.ToString());
                 return new OkObjectResult(order);
             }
             catch (CosmosException ex)
@@ -87,7 +93,7 @@ namespace FunctionApp.Orders
                 if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     CosmosException cosmosException = null;
-                    log.LogError("Status code is 404");
+                    //log.LogError("Status code is 404");
                     int attempts = 0;
                     while (attempts < 5)
                     {
@@ -97,14 +103,15 @@ namespace FunctionApp.Orders
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation(orderId + "Queuing to accept order...");
-                            await _storageService.EnqueueAcceptOrder(order);
+                            //log.LogInformation(orderId + "Queuing to accept order...");
+                            //await _storageService.EnqueueAcceptOrder(order);
+                            await serviceBusQueue.AddAsync(order);
                             return new OkObjectResult(order);
 
                         }
                         catch (CosmosException cosmosEx)
                         {
-                            log.LogError("Caught cosmos exception");
+                            //log.LogError("Caught cosmos exception");
                             cosmosException = cosmosEx;
                         }
 
@@ -123,16 +130,18 @@ namespace FunctionApp.Orders
 
         [FunctionName("OrderOutForDelivery")]
         public async Task<IActionResult> OrderOutForDelivery([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/outForDelivery/{orderId}")] HttpRequest req,
+            [ServiceBus("%OrderOutForDeliveryQueue%", Connection = "ServiceBusConnection")] IAsyncCollector<dynamic> serviceBusQueue,
             string orderId,
        ILogger log)
         {
             Order order = null;
             try
             {
-                log.LogInformation(orderId + " OutForDeliveryOrderAPICallTime: " + DateTime.UtcNow.ToString());
+                //log.LogInformation(orderId + " OutForDeliveryOrderAPICallTime: " + DateTime.UtcNow.ToString());
                 order = await _orderService.GetOrder(orderId);
-                await _storageService.EnqueueOutForDeliveryOrder(order);
-                log.LogInformation(orderId + " out for delivery order added to queue... " + DateTime.UtcNow.ToString());
+                await serviceBusQueue.AddAsync(order);
+                // await _storageService.EnqueueOutForDeliveryOrder(order);
+                //log.LogInformation(orderId + " out for delivery order added to queue... " + DateTime.UtcNow.ToString());
                 return new OkObjectResult(order);
             }
             catch (CosmosException ex)
@@ -141,7 +150,7 @@ namespace FunctionApp.Orders
                 if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     CosmosException cosmosException = null;
-                    log.LogError("Status code is 404");
+                    //log.LogError("Status code is 404");
                     int attempts = 0;
                     while (attempts < 5)
                     {
@@ -151,14 +160,14 @@ namespace FunctionApp.Orders
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation(orderId + "Queuing to out for delivery order...");
-                            await _storageService.EnqueueOutForDeliveryOrder(order);
+                            //log.LogInformation(orderId + "Queuing to out for delivery order...");
+                            await serviceBusQueue.AddAsync(order);
                             return new OkObjectResult(order);
 
                         }
                         catch (CosmosException cosmosEx)
                         {
-                            log.LogError("Caught cosmos exception");
+                            //log.LogError("Caught cosmos exception");
                             cosmosException = cosmosEx;
                         }
 
@@ -176,16 +185,18 @@ namespace FunctionApp.Orders
 
         [FunctionName("OrderDelivered")]
         public async Task<IActionResult> OrderDelivered([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/delivered/{orderId}")] HttpRequest req,
+            [ServiceBus("%OrderDeliveredQueue%", Connection = "ServiceBusConnection")] IAsyncCollector<dynamic> serviceBusQueue,
             string orderId,
        ILogger log)
         {
             Order order = null;
             try
             {
-                log.LogInformation(orderId + " DeliveredOrderAPICallTime: " + DateTime.UtcNow.ToString());
+                //log.LogInformation(orderId + " DeliveredOrderAPICallTime: " + DateTime.UtcNow.ToString());
                 order = await _orderService.GetOrder(orderId);
-                await _storageService.EnqueueDeliveredOrder(order);
-                log.LogInformation(orderId + " delivered order added to queue... " + DateTime.UtcNow.ToString());
+                await serviceBusQueue.AddAsync(order);
+                //await _storageService.EnqueueDeliveredOrder(order);
+                //log.LogInformation(orderId + " delivered order added to queue... " + DateTime.UtcNow.ToString());
 
                 return new OkObjectResult(order);
             }
@@ -195,7 +206,7 @@ namespace FunctionApp.Orders
                 if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     CosmosException cosmosException = null;
-                    log.LogError("Status code is 404");
+                    //log.LogError("Status code is 404");
                     int attempts = 0;
                     while (attempts < 5)
                     {
@@ -205,14 +216,15 @@ namespace FunctionApp.Orders
                         try
                         {
                             order = await _orderService.GetOrder(orderId);
-                            log.LogInformation(orderId + "Queuing to delivered order...");
-                            await _storageService.EnqueueDeliveredOrder(order);
+                            //log.LogInformation(orderId + "Queuing to delivered order...");
+                            //await _storageService.EnqueueDeliveredOrder(order);
+                            await serviceBusQueue.AddAsync(order);
                             return new OkObjectResult(order);
 
                         }
                         catch(CosmosException cosmosEx)
                         {
-                            log.LogError("Caught cosmos exception");
+                            //log.LogError("Caught cosmos exception");
                             cosmosException = cosmosEx;
                         }
 

@@ -20,5 +20,11 @@ namespace ServerlessFoodDelivery.Models.Models
         [JsonProperty(PropertyName = "dishType")]
         public DishType DishType { get; set; }
     }
+    public enum DishType
+    {
+        Veg = 0,
+        NonVeg = 1,
+        ContainsEgg = 2
+    }
 }
 

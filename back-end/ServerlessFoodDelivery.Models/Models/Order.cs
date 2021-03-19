@@ -10,8 +10,11 @@ namespace ServerlessFoodDelivery.Models.Models
         [JsonProperty(PropertyName = "id")]
         public string Id { get; set; }
 
-        [JsonProperty(PropertyName = "restaurant")]
-        public RestaurantDetails RestaurantDetails { get; set; }
+        [JsonProperty(PropertyName = "restaurantId")]
+        public string RestaurantId { get; set; }
+
+        [JsonProperty(PropertyName = "restaurantName")]
+        public string RestaurantName { get; set; }
 
         [JsonProperty(PropertyName = "customer")]
         public Customer Customer { get; set; }

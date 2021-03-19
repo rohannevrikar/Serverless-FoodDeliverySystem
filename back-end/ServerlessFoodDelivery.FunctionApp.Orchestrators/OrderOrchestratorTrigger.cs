@@ -20,14 +20,14 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [FunctionName("PlaceNewOrderQueueTrigger")]
         public static async Task PlaceNewOrderQueueTrigger(
            [DurableClient] IDurableOrchestrationClient context,
-           [QueueTrigger("%OrderNewQueue%", Connection = "AzureWebJobsStorage")] Order order,
+           [ServiceBusTrigger("%OrderNewQueue%", Connection = "ServiceBusConnection")] Order order,
            ILogger log)
         {
             try
             {
-                log.LogInformation(order.Id + " Queue triggered, new order... " + DateTime.UtcNow.ToString());
+                //log.LogInformation(order.Id + " Queue triggered, new order... " + DateTime.UtcNow.ToString());
                 var instanceId = order.Id;
-                log.LogInformation(instanceId + " NewOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
+                //log.LogInformation(instanceId + " NewOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
                 await StartInstance(context, order, instanceId, log);
             }
             catch (Exception ex)
@@ -39,12 +39,12 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [FunctionName("AcceptedOrderQueueTrigger")]
         public static async Task AcceptedOrderQueueTrigger(
         [DurableClient] IDurableOrchestrationClient context,
-        [QueueTrigger("%OrderAcceptedQueue%", Connection = "AzureWebJobsStorage")] Order order,
+        [ServiceBusTrigger("%OrderAcceptedQueue%", Connection = "ServiceBusConnection")] Order order,
         ILogger log)
         {
             try
             {
-                log.LogInformation("Raising accepted event for instance..." + order.Id + " " + DateTime.UtcNow.ToString());
+                //log.LogInformation("Raising accepted event for instance..." + order.Id + " " + DateTime.UtcNow.ToString());
                 await context.RaiseEventAsync(order.Id, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
             }
             catch (ArgumentException ex)
@@ -92,13 +92,13 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [FunctionName("OutForDeliveryOrderQueueTrigger")]
         public static async Task OutForDeliveryOrderQueueTrigger(
        [DurableClient] IDurableOrchestrationClient context,
-       [QueueTrigger("%OrderOutForDeliveryQueue%", Connection = "AzureWebJobsStorage")] Order order,
+       [ServiceBusTrigger("%OrderOutForDeliveryQueue%", Connection = "ServiceBusConnection")] Order order,
        ILogger log)
         {
             string instanceId = $"{order.Id}-accepted";
             try
             {
-                log.LogInformation("Raising out for delivery event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
+                //log.LogInformation("Raising out for delivery event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
                 await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
             }
             catch (ArgumentException ex)
@@ -144,14 +144,14 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [FunctionName("DeliveredOrderQueueTrigger")]
         public static async Task DeliveredOrderQueueTrigger(
      [DurableClient] IDurableOrchestrationClient context,
-     [QueueTrigger("%OrderDeliveredQueue%", Connection = "AzureWebJobsStorage")] Order order,
+     [ServiceBusTrigger("%OrderDeliveredQueue%", Connection = "ServiceBusConnection")] Order order,
      ILogger log)
         {
             string instanceId = $"{order.Id}-out-for-delivery";
 
             try
             {
-                log.LogInformation("Raising delivered event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
+                //log.LogInformation("Raising delivered event for instance..." + instanceId + " " + DateTime.UtcNow.ToString());
                 await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
             }
             catch (ArgumentException ex)
@@ -200,7 +200,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             {
                 var reportStatus = await context.GetStatusAsync(instanceId);
                 string runningStatus = reportStatus == null ? "NULL" : reportStatus.RuntimeStatus.ToString();
-                log.LogInformation($"Instance running status: '{runningStatus}'.");
+                //log.LogInformation($"Instance running status: '{runningStatus}'.");
 
                 if (reportStatus == null || reportStatus.RuntimeStatus != OrchestrationRuntimeStatus.Running)
                 {

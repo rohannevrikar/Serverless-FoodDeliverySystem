@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -17,113 +19,108 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
     public static class MockOrder
     {
         private static readonly HttpClient client = new HttpClient();
+        static Stopwatch timer = new Stopwatch();
+        static Random random = new Random();
 
-        [FunctionName("Function1")]
-        public async static Task Run([TimerTrigger("0 */30 * * * *")] TimerInfo timerInfo, ILogger log)
+
+        [FunctionName("RunsEveryHour")]
+        public async static Task RunsEveryHour([TimerTrigger("0 */60 * * * *")] TimerInfo timerInfo, ILogger log)
         {
-            List<Order> orders = new List<Order>();
-            for(int i = 0; i < 50; i++)
+           //PrepareAndPlaceOrder(log, 50);
+        }
+
+        [FunctionName("RunsEveryTwoMinutes")]
+        public async static Task RunsEveryMinute([TimerTrigger("0 */1 * * * *")] TimerInfo timerInfo, ILogger log)
+        {
+          
+            PrepareAndPlaceOrder(log, 5); 
+        }
+
+        public async static void PrepareAndPlaceOrder(ILogger log, int numberOfOrdersToBePlaced)
+        {
+
+       
+            for (int i = 0; i < numberOfOrdersToBePlaced; i++)
             {
-                RestaurantDetails restaurantDetails = new RestaurantDetails()
+                List<MenuItem> orderItems = new List<MenuItem>();
+                var responseGetRestaurants = await client.GetAsync($"<host>/api/restaurants/getRestaurants"); //TODO: Get host address from config
+                if (responseGetRestaurants.IsSuccessStatusCode)
                 {
-                    Id = "12345",
-                    RestaurantName = "Rohan's Cafe",
-                };
+                    //log.LogInformation("Got list of restaurants...");
 
-                List<MenuItem> items = new List<MenuItem>() {
-                new MenuItem()
-                {
-                    Id = "1",
-                    Item = "Pasta",
-                    Price = 120,
-                    DishType = DishType.Veg
-                },
-                new MenuItem()
-                {
-                    Id = "2",
-                    Item = "Pizza",
-                    Price = 150,
-                    DishType = DishType.NonVeg
+                    List<Restaurant> restaurants = JsonConvert.DeserializeObject<List<Restaurant>>(await responseGetRestaurants.Content.ReadAsStringAsync());
+                    int getRandomItemIndex = random.Next(restaurants.Count);
+                    var responseGetRestaurant = await client.GetAsync($"<host>/api/restaurants/getRestaurant/{restaurants[getRandomItemIndex].Id}"); //TODO: Get host address from config
+                    if (responseGetRestaurant.IsSuccessStatusCode)
+                    {
+                        //log.LogInformation("Got restaurant details, preparing order...");
+                        Restaurant restaurant = JsonConvert.DeserializeObject<Restaurant>(await responseGetRestaurant.Content.ReadAsStringAsync());
+                        orderItems = restaurant.MenuItems.OrderBy(x => Guid.NewGuid()).Take(3).ToList(); //to randomly select 3 menu items
+                        Customer customer = new Customer()
+                        {
+                            Id = "1",
+                            FirstName = "John",
+                            LastName = "Doe",
+                            Email = "joh.doe@gmail.com",
+                            ContactNumber = "1234567",
+                            Address = "22 Jump street",
+                            IsBlocked = false
+                        };
+                        Order order = new Order()
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Customer = customer,
+                            RestaurantId = restaurant.Id,
+                            RestaurantName = restaurant.RestaurantName,
+                            OrderItems = orderItems,
+                            OrderStatus = Models.Enums.OrderStatus.New
+                        };
+                        MockOrders(order, log);
+                        Thread.Sleep(1000);
+                    }
                 }
-            };
-
-                Customer customer = new Customer()
-                {
-                    Id = "1",
-                    FirstName = "John",
-                    LastName = "Doe",
-                    Email = "joh.doe@gmail.com",
-                    ContactNumber = "1234567",
-                    Address = "22 Jump street",
-                    IsBlocked = false
-                };
-
-                Order order = new Order();
-                order.Id = Guid.NewGuid().ToString();                
-                order.RestaurantDetails = restaurantDetails;
-                order.OrderItems = items;
-                order.OrderStatus = Models.Enums.OrderStatus.New;
-                order.Customer = customer;
-
-                orders.Add(order);
-               
             }
            
-            Parallel.ForEach(orders, x => MockOrders(x, log));           
-
         }
+
         [FunctionName("FunctionHttp")]
         public async static Task FunctionHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/mock")] HttpRequest req, ILogger log)
         {
-            List<Order> orders = new List<Order>();
-            for (int i = 0; i < 50; i++)
+
+            List<MenuItem> orderItems = new List<MenuItem>();
+            var responseGetRestaurants = await client.GetAsync($"<host>/api/restaurants/getRestaurants"); //TODO: Get host address from config
+            if (responseGetRestaurants.IsSuccessStatusCode)
             {
-                RestaurantDetails restaurantDetails = new RestaurantDetails()
+                List<Restaurant> restaurants = JsonConvert.DeserializeObject<List<Restaurant>>(await responseGetRestaurants.Content.ReadAsStringAsync());
+                int getRandomItemIndex = random.Next(restaurants.Count);
+                var responseGetRestaurant = await client.GetAsync($"<host>/api/restaurants/getRestaurant/{restaurants[getRandomItemIndex].Id}"); //TODO: Get host address from config
+                if (responseGetRestaurant.IsSuccessStatusCode)
                 {
-                    Id = "12345",
-                    RestaurantName = "Rohan's Cafe",
-                };
 
-                List<MenuItem> items = new List<MenuItem>() {
-                new MenuItem()
-                {
-                    Id = "1",
-                    Item = "Pasta",
-                    Price = 120,
-                    DishType = DishType.Veg
-                },
-                new MenuItem()
-                {
-                    Id = "2",
-                    Item = "Pizza",
-                    Price = 150,
-                    DishType = DishType.NonVeg
+                    Restaurant restaurant = JsonConvert.DeserializeObject<Restaurant>(await responseGetRestaurant.Content.ReadAsStringAsync());
+                    orderItems = restaurant.MenuItems.OrderBy(x => Guid.NewGuid()).Take(3).ToList(); //to randomly select 3 menu items
+                    Customer customer = new Customer()
+                    {
+                        Id = "1",
+                        FirstName = "John",
+                        LastName = "Doe",
+                        Email = "joh.doe@gmail.com",
+                        ContactNumber = "1234567",
+                        Address = "22 Jump street",
+                        IsBlocked = false
+                    };
+                    Order order = new Order()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Customer = customer,
+                        RestaurantId = restaurant.Id,
+                        RestaurantName = restaurant.RestaurantName,
+                        OrderItems = orderItems,
+                        OrderStatus = Models.Enums.OrderStatus.New
+                    };
+                    MockOrders(order, log);
                 }
-            };
-
-                Customer customer = new Customer()
-                {
-                    Id = "1",
-                    FirstName = "John",
-                    LastName = "Doe",
-                    Email = "joh.doe@gmail.com",
-                    ContactNumber = "1234567",
-                    Address = "22 Jump street",
-                    IsBlocked = false
-                };
-
-                Order order = new Order();
-                order.Id = Guid.NewGuid().ToString();
-                order.RestaurantDetails = restaurantDetails;
-                order.OrderItems = items;
-                order.OrderStatus = Models.Enums.OrderStatus.New;
-                order.Customer = customer;
-
-                orders.Add(order);
-
-            }
-
-            Parallel.ForEach(orders, x => MockOrders(x, log));
+            }         
 
         }
 
@@ -131,53 +128,10 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
         {
             var serializedObject = JsonConvert.SerializeObject(order);
             var stringContent = new StringContent(serializedObject, UnicodeEncoding.UTF8, "application/json");
-            log.LogInformation("Placing order... " + order.Id);
 
-            var responseOrderPlaced = await client.PostAsync("<new-order-function-url>", stringContent);
-            log.LogInformation(responseOrderPlaced.StatusCode.ToString());
+            await client.PostAsync("<host>/api/orders", stringContent); //TODO: Get host address from config
 
-            if (responseOrderPlaced.IsSuccessStatusCode)
-            {
-                Thread.Sleep(5000);
-                log.LogInformation("Accepting order... " + order.Id);
-                var responseOrderAccepted = await client.GetAsync($"<accept-order-function-url>");
-                log.LogInformation(responseOrderAccepted.StatusCode.ToString());
-
-                if (responseOrderAccepted.IsSuccessStatusCode)
-                {
-                    Thread.Sleep(10000);
-                    log.LogInformation("Out for delivery order... " + order.Id);
-                    var responseOrderOutForDelivery = await client.GetAsync($"<out-for-delivery-function-url>");
-
-                    if (responseOrderOutForDelivery.IsSuccessStatusCode)
-                    {
-                        Thread.Sleep(10000);
-                        log.LogInformation("Delivering order... " + order.Id);
-                        var responseOrderDelivered = await client.GetAsync($"<delivered-function-url>");
-                        log.LogInformation(responseOrderDelivered.StatusCode.ToString());
-
-                        if (!responseOrderDelivered.IsSuccessStatusCode)
-                        {
-
-                            log.LogError("Something went wrong while delivering the order...");
-                        }
-
-                    }
-                    else
-                    {
-                        log.LogError("Something went wrong while marking the order as out for delivery...");
-                    }
-                }
-                else
-                {
-                    log.LogError("Something went wrong while accepting the order...");
-                }
-            }
-            else
-            {
-                log.LogError("Something went wrong while placing the order...");
-            }
-
+           
         }
     }
 }

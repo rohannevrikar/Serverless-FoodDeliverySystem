@@ -1,11 +1,13 @@
 ﻿using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ServerlessFoodDelivery.Models.Models;
 using ServerlessFoodDelivery.Shared.Helpers;
 using ServerlessFoodDelivery.Shared.Services;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +17,12 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 {
     public class OrderOrchestrator
     {
+        private static readonly HttpClient client = new HttpClient();
+        private readonly IConfiguration _configuration;
+        public OrderOrchestrator(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
 
         [FunctionName("OrderPlacedOrchestrator")]
         public static async Task OrderPlacedOrchestrator(
@@ -23,14 +31,16 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
+                log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
 
                 Order order = context.GetInput<Order>();
-                log.LogInformation(order.Id + " NewOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
+                log.LogInformation("Placing order " + order.Id);
+                //log.LogInformation(order.Id + " NewOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
 
                 await context.CallActivityAsync("UpsertOrder", order);
-                log.LogInformation("Order placed...");
+                //log.LogInformation("Order placed...");
 
-                log.LogInformation("Notifying restaurant...");
+                //log.LogInformation("Notifying restaurant...");
                 await context.CallActivityAsync("NotifyRestaurant", order);
 
                 using (var cts = new CancellationTokenSource())
@@ -38,13 +48,15 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                     var timeoutAt = context.CurrentUtcDateTime.AddSeconds(60);
                     var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
                     var acknowledgeTask = context.WaitForExternalEvent(Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
-                    log.LogInformation("Waiting for restaurant to accept the order...");
+                    await context.CallActivityAsync("AcceptOrder", order);
+
+                    //log.LogInformation("Waiting for restaurant to accept the order...");
                     var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
                     if (winner == acknowledgeTask)
                     {
-                        log.LogInformation("Order accepted event received..." + order.Id + " " + DateTime.UtcNow.ToString());
+                        //log.LogInformation("Order accepted event received..." + order.Id + " " + DateTime.UtcNow.ToString());
                         string instanceId = $"{order.Id}-accepted";
-                        log.LogInformation(instanceId + " AcceptOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
+                        //log.LogInformation(instanceId + " AcceptOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
 
                         context.StartNewOrchestration("OrderAcceptedOrchestrator", order, instanceId);
                         await context.CallActivityAsync("NotifyCustomer", order);
@@ -69,28 +81,32 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         public static async Task OrderAcceptedOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
+            log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
+         
             Order order = context.GetInput<Order>();
+            log.LogInformation("Accepting order " + order.Id);
 
-            log.LogInformation(order.Id + " AcceptOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
+            //log.LogInformation(order.Id + " AcceptOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
             order.OrderStatus = OrderStatus.Accepted;
             await context.CallActivityAsync("UpsertOrder", order);
             await context.CallActivityAsync("NotifyRestaurant", order);
-            log.LogInformation("Order preparing...");
+            //log.LogInformation("Order preparing...");
 
 
 
             using (var cts = new CancellationTokenSource())
             {
-                log.LogInformation("Instance Id in accepted orchestrator: " + context.InstanceId);
+                //log.LogInformation("Instance Id in accepted orchestrator: " + context.InstanceId);
                 var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
                 var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
                 var acknowledgeTask = context.WaitForExternalEvent(Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+                await context.CallActivityAsync("OutForDeliveryOrder", order);
                 var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
                 if (winner == acknowledgeTask)
                 {
-                    log.LogInformation("Order is out for delivery event received..." + order.Id + " " + DateTime.UtcNow.ToString());
+                    //log.LogInformation("Order is out for delivery event received..." + order.Id + " " + DateTime.UtcNow.ToString());
                     string instanceId = $"{order.Id}-out-for-delivery";
-                    log.LogInformation(instanceId + " OutForDeliveryOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
+                    //log.LogInformation(instanceId + " OutForDeliveryOrderOrchestrationTriggerTime: " + DateTime.UtcNow.ToString());
 
                     context.StartNewOrchestration("OrderOutForDeliveryOrchestrator", order, instanceId);
                     await context.CallActivityAsync("NotifyCustomer", order);
@@ -110,27 +126,34 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         public static async Task OrderOutForDeliveryOrchestrator(
      [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
+            log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
+
+            
             Order order = context.GetInput<Order>();
+            log.LogInformation("Out for delivery order " + order.Id);
 
 
-            log.LogInformation(order.Id + " OutForDeliveryOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
+            //log.LogInformation(order.Id + " OutForDeliveryOrderOrchestrationStartTime: " + DateTime.UtcNow.ToString());
             order.OrderStatus = OrderStatus.OutForDelivery;
             await context.CallActivityAsync("UpsertOrder", order);
             await context.CallActivityAsync("NotifyCustomer", order);
-            log.LogInformation("Order out for delivery...");
+            //log.LogInformation("Order out for delivery...");
 
 
 
             using (var cts = new CancellationTokenSource())
             {
-                log.LogInformation("Instance Id in out for delivery orchestrator: " + context.InstanceId);
+                //log.LogInformation("Instance Id in out for delivery orchestrator: " + context.InstanceId);
                 var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
                 var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
                 var acknowledgeTask = context.WaitForExternalEvent(Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+                await context.CallActivityAsync("DeliverOrder", order);
+                log.LogInformation("Delivered order " + order.Id);
+
                 var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
                 if (winner == acknowledgeTask)
                 {
-                    log.LogInformation("Order is delivered event received..." + order.Id);
+                    //log.LogInformation("Order is delivered event received..." + order.Id);
                     order.OrderStatus = OrderStatus.Delivered;
                     await context.CallActivityAsync("UpsertOrder", order);
                     await context.CallActivityAsync("NotifyCustomer", order);
@@ -138,7 +161,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                 }
                 else
                 {
-                    log.LogInformation("Order hasn't been delivered yet...");
+                    //log.LogInformation("Order hasn't been delivered yet...");
                     await context.CallActivityAsync("NotifyRestaurant", order);
                     //Handle time out logic
 
@@ -158,6 +181,24 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             //TODO: Send notification to customer
             log.LogInformation(order.Id + " OrderUpserted: " + DateTime.UtcNow.ToString());
 
+        }
+
+        [FunctionName("AcceptOrder")]
+        public async Task AcceptOrderAsync([ActivityTrigger] Order order, ILogger log)
+        {
+            await client.GetAsync($"{_configuration["HostEndpoint"]}/orders/accepted/{order.Id}");
+        }
+
+        [FunctionName("OutForDeliveryOrder")]
+        public async Task OutForDeliveryOrderAsync([ActivityTrigger] Order order, ILogger log)
+        {
+            await client.GetAsync($"{_configuration["HostEndpoint"]}/orders/outForDelivery/{order.Id}");
+        }
+
+        [FunctionName("DeliverOrder")]
+        public async Task DeliverOrderAsync([ActivityTrigger] Order order, ILogger log)
+        {
+            await client.GetAsync($"{_configuration["HostEndpoint"]}/orders/delivered/{order.Id}");
         }
 
         [FunctionName("NotifyRestaurant")]

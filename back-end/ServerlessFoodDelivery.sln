@@ -11,7 +11,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Mode
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Orchestrators", "ServerlessFoodDelivery.FunctionApp.Orchestrators\ServerlessFoodDelivery.FunctionApp.Orchestrators.csproj", "{75792633-BFC2-4D1E-A4FB-F40E92E102BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerlessFoodDelivery.FunctionApp.Mock", "ServerlessFoodDelivery.FunctionApp.Mock\ServerlessFoodDelivery.FunctionApp.Mock.csproj", "{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Mock", "ServerlessFoodDelivery.FunctionApp.Mock\ServerlessFoodDelivery.FunctionApp.Mock.csproj", "{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerlessFoodDelivery.FunctionApp.Restaurants", "ServerlessFoodDelivery.FunctionApp.Restaurants\ServerlessFoodDelivery.FunctionApp.Restaurants.csproj", "{9085C1BC-072E-4B95-AB7B-764B7B171A82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

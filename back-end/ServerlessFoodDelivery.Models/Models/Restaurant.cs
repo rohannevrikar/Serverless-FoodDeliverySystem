@@ -10,6 +10,9 @@ namespace ServerlessFoodDelivery.Models.Models
         [JsonProperty(PropertyName = "id")]
         public string Id { get; set; }
 
+        [JsonProperty(PropertyName = "restaurantName")]
+        public string RestaurantName { get; set; }
+
         [JsonProperty(PropertyName = "menu")]
         public List<MenuItem> MenuItems{ get; set; }
 
@@ -17,12 +20,7 @@ namespace ServerlessFoodDelivery.Models.Models
         public bool IsAcceptingOrders { get; set; }
     }
    
-    public enum DishType
-    {
-        Veg = 0,
-        NonVeg = 1,
-        ContainsEgg = 2
-    }
+
     public class RestaurantDetails
     {
         [JsonProperty(PropertyName = "id")]
