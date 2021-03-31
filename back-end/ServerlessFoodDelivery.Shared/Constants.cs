@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace ServerlessFoodDelivery.Shared.Helpers
+namespace ServerlessFoodDelivery.Shared
 {
     public class Constants
     {

@@ -16,8 +16,10 @@
   },
   "logging": {
     "logLevel": {
-      "default": "Information",
       "Function": "Error",
+      "Host.Triggers.DurableTask": "Error",
+      "DurableTask.AzureStorage": "Error",
+      "DurableTask.Core": "Error",
       "Microsoft*": "Error"
     },
     "applicationInsights": {

@@ -5,15 +5,15 @@ VisualStudioVersion = 16.0.30011.19
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Orders", "ServerlessFoodDelivery.FunctionApp.Orders\ServerlessFoodDelivery.FunctionApp.Orders.csproj", "{5E94B96F-F386-45D1-9477-DB5E85BA78A9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Shared", "ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj", "{B12484A4-066F-4645-9A34-6CD9D6A42876}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Models", "ServerlessFoodDelivery.Models\ServerlessFoodDelivery.Models.csproj", "{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Orchestrators", "ServerlessFoodDelivery.FunctionApp.Orchestrators\ServerlessFoodDelivery.FunctionApp.Orchestrators.csproj", "{75792633-BFC2-4D1E-A4FB-F40E92E102BB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Mock", "ServerlessFoodDelivery.FunctionApp.Mock\ServerlessFoodDelivery.FunctionApp.Mock.csproj", "{C82AC36D-3DB2-4E3D-B7A7-35ABE901420B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerlessFoodDelivery.FunctionApp.Restaurants", "ServerlessFoodDelivery.FunctionApp.Restaurants\ServerlessFoodDelivery.FunctionApp.Restaurants.csproj", "{9085C1BC-072E-4B95-AB7B-764B7B171A82}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Restaurants", "ServerlessFoodDelivery.FunctionApp.Restaurants\ServerlessFoodDelivery.FunctionApp.Restaurants.csproj", "{9085C1BC-072E-4B95-AB7B-764B7B171A82}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerlessFoodDelivery.Shared", "ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj", "{73071828-B551-4225-9D4E-0A46C20A42CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +25,6 @@ Global
 		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E94B96F-F386-45D1-9477-DB5E85BA78A9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B12484A4-066F-4645-9A34-6CD9D6A42876}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1D1B1A6-A969-4EBB-AD91-9E5A1AAC6A32}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -45,6 +41,10 @@ Global
 		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9085C1BC-072E-4B95-AB7B-764B7B171A82}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73071828-B551-4225-9D4E-0A46C20A42CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73071828-B551-4225-9D4E-0A46C20A42CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73071828-B551-4225-9D4E-0A46C20A42CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73071828-B551-4225-9D4E-0A46C20A42CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.10" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ServerlessFoodDelivery.Models\ServerlessFoodDelivery.Models.csproj" />
     <ProjectReference Include="..\ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
