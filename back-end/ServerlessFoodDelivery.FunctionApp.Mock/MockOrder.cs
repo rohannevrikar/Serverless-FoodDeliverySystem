@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -17,7 +14,7 @@ using ServerlessFoodDelivery.Models.Models;
 
 namespace ServerlessFoodDelivery.FunctionApp.Mock
 {
-    public class MockOrder
+    public class MockOrder : IFunctionExceptionFilter
     {
         private static readonly HttpClient client = new HttpClient();
         static Random random = new Random();
@@ -42,14 +39,12 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
             for (int i = 0; i < numberOfOrdersToBePlaced; i++)
             {
                 List<MenuItem> orderItems = new List<MenuItem>();
-                log.LogInformation("Getting list of restaurants");
                 var responseGetRestaurants = await client.GetAsync($"{_configuration["RestaurantHostEndpoint"]}/restaurants/getRestaurants"); //TODO: Get host address from config
                 if (responseGetRestaurants.IsSuccessStatusCode)
                 {
                     
                     List<Restaurant> restaurants = JsonConvert.DeserializeObject<List<Restaurant>>(await responseGetRestaurants.Content.ReadAsStringAsync());
                     int getRandomItemIndex = random.Next(restaurants.Count);
-                    log.LogInformation("Getting restaurant details");
                     var responseGetRestaurant = await client.GetAsync($"{_configuration["RestaurantHostEndpoint"]}/restaurants/getRestaurant/{restaurants[getRandomItemIndex].Id}"); //TODO: Get host address from config
                     if (responseGetRestaurant.IsSuccessStatusCode)
                     {                        
@@ -95,13 +90,18 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
         {
             var serializedObject = JsonConvert.SerializeObject(order);
             var stringContent = new StringContent(serializedObject, UnicodeEncoding.UTF8, "application/json");
-            log.LogInformation("Placing order: " + order.Id);
             var responsePlaceOrder = await client.PostAsync($"{_configuration["OrderHostEndpoint"]}/orders", stringContent);
             if (!responsePlaceOrder.IsSuccessStatusCode)
             {
                 throw new Exception("Failed to place a new order");
 
             }
+        }
+
+        public Task OnExceptionAsync(FunctionExceptionContext exceptionContext, CancellationToken cancellationToken)
+        {
+            exceptionContext.Logger.LogError($"Something went wrong while executing {exceptionContext.FunctionName}. Exception details: {exceptionContext.Exception}");
+            return Task.CompletedTask;
         }
     }
 }

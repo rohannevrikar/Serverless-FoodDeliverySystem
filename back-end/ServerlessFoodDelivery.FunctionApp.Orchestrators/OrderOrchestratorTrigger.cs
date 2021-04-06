@@ -1,7 +1,9 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using ServerlessFoodDelivery.Models.Models;
 using ServerlessFoodDelivery.Shared;
@@ -18,8 +20,22 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [ServiceBusTrigger("%OrderNewQueue%", Connection = "ServiceBusConnection")] Order order,
         ILogger log)
         {
-            string instanceId = order.Id;
-            await StartInstance(context, order, instanceId, log);
+            try
+            {
+                string instanceId = order.Id;
+                await StartInstance(context, order, instanceId, log);
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                }
+                else
+                {
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
+                }
+            }
         }
 
         [FunctionName("AcceptedOrderQueueTrigger")]
@@ -28,8 +44,22 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [ServiceBusTrigger("%OrderAcceptedQueue%", Connection = "ServiceBusConnection")] Order order,
         ILogger log)
         {
-            string instanceId = order.Id;
-            await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
+            try
+            {
+                string instanceId = order.Id;
+                await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                }
+                else
+                {
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
+                }
+            }
         }
 
         [FunctionName("OutForDeliveryOrderQueueTrigger")]
@@ -38,8 +68,23 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [ServiceBusTrigger("%OrderOutForDeliveryQueue%", Connection = "ServiceBusConnection")] Order order,
         ILogger log)
         {
-            string instanceId = $"{order.Id}-accepted";
-            await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+            try
+            {
+                string instanceId = $"{order.Id}-accepted";
+                await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                }
+                else
+                {
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
+                }
+            }
+
         }
 
         [FunctionName("DeliveredOrderQueueTrigger")]
@@ -48,8 +93,22 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [ServiceBusTrigger("%OrderDeliveredQueue%", Connection = "ServiceBusConnection")] Order order,
         ILogger log)
         {
-            string instanceId = $"{order.Id}-out-for-delivery";
-            await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+            try
+            {
+                string instanceId = $"{order.Id}-out-for-delivery";
+                await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                }
+                else
+                {
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
+                }
+            }
         }
         #endregion
 
@@ -72,7 +131,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             }
         }
 
-        
+
 
         #region Handling DLQs
         [FunctionName("AcceptedOrderDeadLetterQueueTrigger")]
@@ -101,6 +160,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             log.LogInformation("clearing dead letter queue");
         }
-        #endregion
+        #endregion        
     }
 }

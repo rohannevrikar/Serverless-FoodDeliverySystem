@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static ServerlessFoodDelivery.Models.Enums;
 using ServerlessFoodDelivery.Shared;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 {
@@ -26,47 +27,58 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
+
+            log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
+            Order order = context.GetInput<Order>();
+
             try
             {
-                log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
-
-                Order order = context.GetInput<Order>();
-                log.LogInformation("Placing order " + order.Id);
-
                 await context.CallActivityAsync("UpsertOrder", order);
 
                 await context.CallActivityAsync("NotifyRestaurant", order);
-                Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/accepted/{order.Id}");
-                await context.CallHttpAsync(HttpMethod.Get, uri);
 
+                Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/accepted/{order.Id}");
+
+                await context.CallHttpAsync(HttpMethod.Get, uri);
 
                 using (var cts = new CancellationTokenSource())
                 {
                     var timeoutAt = context.CurrentUtcDateTime.AddSeconds(60);
                     var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
                     var acknowledgeTask = context.WaitForExternalEvent(Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
-
                     var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
+
                     if (winner == acknowledgeTask)
                     {
                         string instanceId = $"{order.Id}-accepted";
 
                         context.StartNewOrchestration("OrderAcceptedOrchestrator", order, instanceId);
-                        await context.CallActivityAsync("NotifyCustomer", order);
-                        cts.Cancel(); 
 
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        cts.Cancel();
                     }
                     else
                     {
-                        log.LogError("OrderPlacedOrchestrator Timed out!!!");
                         //TODO: Handle time out logic
+                        log.LogError($"OrderPlacedOrchestrator Timed out {order.Id}");
+
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        await context.CallActivityAsync("NotifyRestaurant", order);                       
                     }
                 }
             }
             catch (Exception ex)
             {
-                throw ex;
-
+                if(order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                }
+                else
+                {
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
+                }
             }
         }
 
@@ -75,39 +87,60 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
-
             Order order = context.GetInput<Order>();
-            log.LogInformation("Accepting order " + order.Id);
 
-            order.OrderStatus = OrderStatus.Accepted;
-            await context.CallActivityAsync("UpsertOrder", order);
-            await context.CallActivityAsync("NotifyRestaurant", order);
-
-            Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/outForDelivery/{order.Id}");
-            await context.CallHttpAsync(HttpMethod.Get, uri);
-
-            using (var cts = new CancellationTokenSource())
+            try
             {
-                var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
-                var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
-                var acknowledgeTask = context.WaitForExternalEvent(Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
-                var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
-                if (winner == acknowledgeTask)
-                {
-                    string instanceId = $"{order.Id}-out-for-delivery";
+                order.OrderStatus = OrderStatus.Accepted;
 
-                    context.StartNewOrchestration("OrderOutForDeliveryOrchestrator", order, instanceId);
-                    await context.CallActivityAsync("NotifyCustomer", order);
-                    cts.Cancel(); 
+                await context.CallActivityAsync("UpsertOrder", order);
+
+                await context.CallActivityAsync("NotifyRestaurant", order);
+
+                Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/outForDelivery/{order.Id}");
+
+                await context.CallHttpAsync(HttpMethod.Get, uri);
+
+                using (var cts = new CancellationTokenSource())
+                {
+                    var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
+                    var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
+                    var acknowledgeTask = context.WaitForExternalEvent(Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
+                    var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
+
+                    if (winner == acknowledgeTask)
+                    {
+                        string instanceId = $"{order.Id}-out-for-delivery";
+
+                        context.StartNewOrchestration("OrderOutForDeliveryOrchestrator", order, instanceId);
+
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        cts.Cancel();
+                    }
+                    else
+                    {
+                        //Handle time out logic
+
+                        log.LogError($"OrderAcceptedOrchestrator Timed out {order.Id}");
+
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        await context.CallActivityAsync("NotifyRestaurant", order);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
                 }
                 else
                 {
-                    log.LogError("OrderAcceptedOrchestrator Timed out!!!");
-                    await context.CallActivityAsync("NotifyRestaurant", order);
-                    //Handle time out logic
-
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
                 }
-            }
+            }           
         }
 
         [FunctionName("OrderOutForDeliveryOrchestrator")]
@@ -115,41 +148,56 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
      [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             log = context.CreateReplaySafeLogger(log); //to prevent logging at the time of function replay
-
-
             Order order = context.GetInput<Order>();
-            log.LogInformation("Out for delivery order " + order.Id);
-
-
-            order.OrderStatus = OrderStatus.OutForDelivery;
-            await context.CallActivityAsync("UpsertOrder", order);
-            await context.CallActivityAsync("NotifyCustomer", order);
-
-            Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/delivered/{order.Id}");
-            await context.CallHttpAsync(HttpMethod.Get, uri);
-
-
-            using (var cts = new CancellationTokenSource())
+            try
             {
-                var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
-                var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
-                var acknowledgeTask = context.WaitForExternalEvent(Constants.DELIVERY_ORDER_DELIVERED_EVENT);
-                log.LogInformation("Delivered order " + order.Id);
+                order.OrderStatus = OrderStatus.OutForDelivery;
 
-                var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
-                if (winner == acknowledgeTask)
+                await context.CallActivityAsync("UpsertOrder", order);
+
+                await context.CallActivityAsync("NotifyCustomer", order);
+
+                Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/delivered/{order.Id}");
+
+                await context.CallHttpAsync(HttpMethod.Get, uri);
+
+                using (var cts = new CancellationTokenSource())
                 {
-                    order.OrderStatus = OrderStatus.Delivered;
-                    await context.CallActivityAsync("UpsertOrder", order);
-                    await context.CallActivityAsync("NotifyCustomer", order);
-                    cts.Cancel(); 
+                    var timeoutAt = context.CurrentUtcDateTime.AddHours(1);
+                    var timeoutTask = context.CreateTimer(timeoutAt, cts.Token);
+                    var acknowledgeTask = context.WaitForExternalEvent(Constants.DELIVERY_ORDER_DELIVERED_EVENT);
+                    var winner = await Task.WhenAny(acknowledgeTask, timeoutTask);
+
+                    if (winner == acknowledgeTask)
+                    {
+                        order.OrderStatus = OrderStatus.Delivered;
+
+                        await context.CallActivityAsync("UpsertOrder", order);
+
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        cts.Cancel();
+                    }
+                    else
+                    {
+                        //Handle time out logic
+                        log.LogError($"OrderOutForDeliveryOrchestrator Timed out {order.Id}");
+
+                        await context.CallActivityAsync("NotifyCustomer", order);
+
+                        await context.CallActivityAsync("NotifyRestaurant", order);                       
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (order != null)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
                 }
                 else
                 {
-                    log.LogError("OrderOutForDeliveryOrchestrator Timed out!!!");
-                    await context.CallActivityAsync("NotifyRestaurant", order);
-                    //Handle time out logic
-
+                    ex.LogExceptionDetails(log, null, GetType().FullName);
                 }
             }
         }
@@ -189,6 +237,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             //TODO: Send notification to customer
             log.LogInformation("Customer notified..." + order.Id);
         }
-        #endregion
+        #endregion       
     }
 }

@@ -11,11 +11,15 @@ using ServerlessFoodDelivery.Models.Models;
 using Microsoft.Azure.Cosmos;
 using System.Threading;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Host;
+using ServerlessFoodDelivery.Shared;
+using System.Reflection;
 
 namespace FunctionApp.Orders
 {
     public class OrderFunction
-    {
+    {      
+
         [FunctionName("GetOrder")]
         public IActionResult GetOrder([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/{orderId}")] HttpRequest req,
              [CosmosDB(
@@ -23,9 +27,9 @@ namespace FunctionApp.Orders
                 collectionName: "Orders",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{orderId}",
-                PartitionKey = "{orderId}")] Order order,
-            ILogger log)
+                PartitionKey = "{orderId}")] Order order, ILogger log)
         {
+
             if (order != null)
             {
                 return new OkObjectResult(order);
@@ -43,22 +47,11 @@ namespace FunctionApp.Orders
         public async Task<ActionResult> PlaceNewOrder([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")]
         HttpRequest req,
             [ServiceBus("%OrderNewQueue%", Connection = "ServiceBusConnection")]
-            IAsyncCollector<dynamic> serviceBusQueue,
-           ILogger log)
+            IAsyncCollector<dynamic> serviceBusQueue, ILogger log)
         {
-            try
-            {
-                log.LogInformation("placing order...");
-                string requestBody = new StreamReader(req.Body).ReadToEnd();
-                Order order = JsonConvert.DeserializeObject<Order>(requestBody);
-                return await AddToQueue(order, serviceBusQueue);
-            }
-            catch (Exception ex)
-            {
-                log.LogError(ex.ToString());
-                throw ex;
-            }
-
+            string requestBody = new StreamReader(req.Body).ReadToEnd();
+            Order order = JsonConvert.DeserializeObject<Order>(requestBody);
+            return await AddToQueue(log, order, serviceBusQueue);
         }
 
         [FunctionName("OrderAccepted")]
@@ -70,18 +63,9 @@ namespace FunctionApp.Orders
                 collectionName: "Orders",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{orderId}",
-                PartitionKey = "{orderId}")] Order order,
-        ILogger log)
+                PartitionKey = "{orderId}")] Order order, ILogger log)
         {
-            try
-            {
-                return await AddToQueue(order, serviceBusQueue);
-            }
-            catch (Exception ex)
-            {
-                log.LogError(ex.ToString());
-                throw ex;
-            }
+            return await AddToQueue(log, order, serviceBusQueue);
         }
 
         [FunctionName("OrderOutForDelivery")]
@@ -93,18 +77,9 @@ namespace FunctionApp.Orders
                 collectionName: "Orders",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{orderId}",
-                PartitionKey = "{orderId}")] Order order,
-       ILogger log)
+                PartitionKey = "{orderId}")] Order order, ILogger log)
         {
-            try
-            {
-                return await AddToQueue(order, serviceBusQueue);
-            }
-            catch (Exception ex)
-            {
-                log.LogError(ex.ToString());
-                throw ex;
-            }
+            return await AddToQueue(log, order, serviceBusQueue);
         }
 
         [FunctionName("OrderDelivered")]
@@ -116,34 +91,34 @@ namespace FunctionApp.Orders
                 collectionName: "Orders",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{orderId}",
-                PartitionKey = "{orderId}")] Order order,
-       ILogger log)
+                PartitionKey = "{orderId}")] Order order, ILogger log)
         {
-            try
-            {
-                return await AddToQueue(order, serviceBusQueue);
-            }
-            catch (Exception ex)
-            {
-                log.LogError(ex.ToString());
-                throw ex;
-            }
+            return await AddToQueue(log, order, serviceBusQueue);
         }
-        private async Task<ActionResult> AddToQueue(Order order, IAsyncCollector<dynamic> serviceBusQueue)
+        private async Task<ActionResult> AddToQueue(ILogger log, Order order, IAsyncCollector<dynamic> serviceBusQueue)
         {
             if (order != null)
             {
-                await serviceBusQueue.AddAsync(order);
-                return new OkObjectResult(order);
+                try
+                {
+                    await serviceBusQueue.AddAsync(order);                    
+                    return new OkObjectResult(order);
+                }
+                catch(Exception ex)
+                {
+                    ex.LogExceptionDetails(log, order.Id, GetType().FullName);
+                    var result = new ObjectResult($"Something went wrong while processing the order. Message: {ex.Message}");
+                    result.StatusCode = StatusCodes.Status500InternalServerError;
+                    return result;
+                }               
             }
             else
             {
-                var result = new ObjectResult($"Order {order.Id} not found");
+                var result = new ObjectResult($"Order not found");
                 result.StatusCode = StatusCodes.Status404NotFound;
                 return result;
             }
         }
-
     }
 
 }

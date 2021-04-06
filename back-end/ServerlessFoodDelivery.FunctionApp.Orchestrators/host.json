@@ -16,14 +16,11 @@
   },
   "logging": {
     "logLevel": {
-      "Function": "Error",
-      "Host.Triggers.DurableTask": "Error",
-      "DurableTask.AzureStorage": "Error",
-      "DurableTask.Core": "Error",
-      "Microsoft*": "Error"
+      "default": "Error",
+      "Host.Aggregator": "Information",
+      "Host.Results" : "Information"
     },
     "applicationInsights": {
-      "samplingExcludedTypes": "Request",
       "samplingSettings": {
         "isEnabled": true
       }

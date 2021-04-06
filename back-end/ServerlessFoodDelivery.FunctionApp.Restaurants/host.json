@@ -6,7 +6,6 @@
       "Microsoft*": "Error"
     },
     "applicationInsights": {
-      "samplingExcludedTypes": "Request",
       "samplingSettings": {
         "isEnabled": true
       }

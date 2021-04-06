@@ -14,6 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ServerlessFoodDelivery.Models\ServerlessFoodDelivery.Models.csproj" />
+    <ProjectReference Include="..\ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
