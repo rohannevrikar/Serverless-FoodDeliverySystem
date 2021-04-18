@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "ServerlessFoodDelivery.FunctionApp.Restaurants": {
-      "commandName": "Project",
-      "commandLineArgs": "host start --port 7074 --pause-on-error"
-    }
-  }
-}

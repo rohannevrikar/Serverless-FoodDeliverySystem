@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "ServerlessFoodDelivery.FunctionApp.Orchestrators": {
-      "commandName": "Project",
-      "commandLineArgs": "host start --port 7072 --nodeDebugPort 5860"
-    }
-  }
-}

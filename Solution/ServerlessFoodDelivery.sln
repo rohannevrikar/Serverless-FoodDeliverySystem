@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Func
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.FunctionApp.Restaurants", "ServerlessFoodDelivery.FunctionApp.Restaurants\ServerlessFoodDelivery.FunctionApp.Restaurants.csproj", "{9085C1BC-072E-4B95-AB7B-764B7B171A82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerlessFoodDelivery.Shared", "ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj", "{73071828-B551-4225-9D4E-0A46C20A42CA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerlessFoodDelivery.Shared", "ServerlessFoodDelivery.Shared\ServerlessFoodDelivery.Shared.csproj", "{73071828-B551-4225-9D4E-0A46C20A42CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

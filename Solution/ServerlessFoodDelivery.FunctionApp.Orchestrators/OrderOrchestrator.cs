@@ -52,9 +52,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                     {
                         string instanceId = $"{order.Id}-accepted";
 
-                        context.StartNewOrchestration("OrderAcceptedOrchestrator", order, instanceId);
-
-                        await context.CallActivityAsync("NotifyCustomer", order);
+                        context.StartNewOrchestration("OrderAcceptedOrchestrator", order, instanceId);                        
 
                         cts.Cancel();
                     }
@@ -95,7 +93,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 
                 await context.CallActivityAsync("UpsertOrder", order);
 
-                await context.CallActivityAsync("NotifyRestaurant", order);
+                await context.CallActivityAsync("NotifyCustomer", order);
 
                 Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/outForDelivery/{order.Id}");
 
@@ -113,8 +111,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                         string instanceId = $"{order.Id}-out-for-delivery";
 
                         context.StartNewOrchestration("OrderOutForDeliveryOrchestrator", order, instanceId);
-
-                        await context.CallActivityAsync("NotifyCustomer", order);
 
                         cts.Cancel();
                     }
@@ -216,7 +212,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             document = order;
             //TODO: Send notification to customer
-            log.LogInformation(order.Id + " OrderUpserted: " + DateTime.UtcNow.ToString());
 
         }
 
@@ -226,7 +221,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
 
             //TODO: Send notification to restaurant
-            log.LogInformation("Restaurant notified..." + order.Id);
 
         }
 
@@ -235,7 +229,6 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
               ILogger log)
         {
             //TODO: Send notification to customer
-            log.LogInformation("Customer notified..." + order.Id);
         }
         #endregion       
     }

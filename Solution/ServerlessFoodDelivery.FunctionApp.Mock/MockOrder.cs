@@ -29,7 +29,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
         public async Task RunsEveryMinute([TimerTrigger("0 */1 * * * *")] TimerInfo timerInfo, ILogger log)
         {
           
-            PrepareAndPlaceOrder(log, 30); 
+            PrepareAndPlaceOrder(log, 60); 
         }
 
         public async void PrepareAndPlaceOrder(ILogger log, int numberOfOrdersToBePlaced)
