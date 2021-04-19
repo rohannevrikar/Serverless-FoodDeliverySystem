@@ -205,8 +205,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         [FunctionName("UpsertOrder")]
         public static void UpsertOrder([ActivityTrigger] Order order,
        [CosmosDB(
-                databaseName: "FoodDeliveryDB",
-                collectionName: "Orders",
+                databaseName: "%CosmosDbFoodDeliveryDatabaseName%",
+                collectionName: "%CosmosDbOrderContainerName%",
                 ConnectionStringSetting = "CosmosDbConnectionString")] out dynamic document,
        ILogger log)
         {

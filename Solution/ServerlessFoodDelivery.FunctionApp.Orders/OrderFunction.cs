@@ -23,8 +23,8 @@ namespace FunctionApp.Orders
         [FunctionName("GetOrder")]
         public IActionResult GetOrder([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "orders/{orderId}")] HttpRequest req,
              [CosmosDB(
-                databaseName: "FoodDeliveryDB",
-                collectionName: "Orders",
+                databaseName: "%CosmosDbFoodDeliveryDatabaseName%",
+                collectionName: "%CosmosDbOrderContainerName%",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{orderId}",
                 PartitionKey = "{orderId}")] Order order, ILogger log)

@@ -18,8 +18,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Restaurants
         public IActionResult GetRestaurants(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "restaurants/getRestaurants")] HttpRequest req,
              [CosmosDB(
-                databaseName: "FoodDeliveryDB",
-                collectionName: "Restaurants",
+                databaseName: "%CosmosDbFoodDeliveryDatabaseName%",
+                collectionName: "%CosmosDbRestaurantContainerName%",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 SqlQuery = "SELECT * FROM c")]
                 IEnumerable<Restaurant> restaurants)
@@ -32,8 +32,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Restaurants
         public IActionResult GetRestaurant(
            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "restaurants/getRestaurant/{restaurantId}")] HttpRequest req,
             [CosmosDB(
-                databaseName: "FoodDeliveryDB",
-                collectionName: "Restaurants",
+                databaseName: "%CosmosDbFoodDeliveryDatabaseName%",
+                collectionName: "%CosmosDbRestaurantContainerName%",
                 ConnectionStringSetting = "CosmosDbConnectionString",
                 Id = "{restaurantId}",
                 PartitionKey = "{restaurantId}")] Restaurant restaurant)

@@ -13,6 +13,9 @@
 # Azure Functions localsettings file
 local.settings.json
 
+#Deployment zips
+
+DeploymentZips/
 Properties/
 
 # User-specific files (MonoDevelop/Xamarin Studio)

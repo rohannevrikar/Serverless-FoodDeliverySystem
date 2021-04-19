@@ -1,0 +1,756 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {      
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String"
+        },
+        "storageAccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Standard_RAGRS"
+            ]
+        },
+        "appName": {
+            "type": "string",
+            "defaultValue": "fds"
+        }
+    },
+    "variables": {
+        "ordersAppName": "[concat(parameters('appName'), '-orders')]",
+        "orchestratorAppName": "[concat(parameters('appName'), '-orchestrators')]",
+        "mockOrdersAppName": "[concat(parameters('appName'), '-mock')]",
+        "restaurantsAppName": "[concat(parameters('appName'), '-restaurants')]",
+        "hostingPlanName": "[parameters('appName')]",
+        "applicationInsightsName": "[parameters('appName')]",
+        "serviceBusNamespaceName" : "[concat(parameters('appName'), '-servicebus')]",
+        "cosmosDbAccountName": "[concat(parameters('appName'), '-cosmosdb-acc')]",
+        "order-new-queue": "[concat(variables('serviceBusNamespaceName'), '/order-new-queue')]",
+        "order-accepted-queue": "[concat(variables('serviceBusNamespaceName'), '/order-accepted-queue')]",
+        "order-outfordelivery-queue": "[concat(variables('serviceBusNamespaceName'), '/order-outfordelivery-queue')]",
+        "order-delivered-queue": "[concat(variables('serviceBusNamespaceName'), '/order-delivered-queue')]",
+        "order-canceled-queue": "[concat(variables('serviceBusNamespaceName'), '/order-canceled-queue')]",
+        "mockOrdersStorageAccountName": "[concat(parameters('appName'), 'ordersmock')]",
+        "orderStorageAccountName": "[concat(parameters('appName'), 'orchestrator')]",
+        "orchestratorStorageAccountName": "[concat(parameters('appName'), 'orders')]",
+        "restaurantStorageAccountName": "[concat(parameters('appName'), 'restaurants')]"        
+    },
+
+    "resources": [
+        // CosmosDB account
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "apiVersion": "2021-03-01-preview",
+            "name": "[variables('cosmosDbAccountName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "defaultExperience": "Core (SQL)",
+                "hidden-cosmos-mmspecial": "",
+                "CosmosAccountType": "Non-Production"
+            },
+            "kind": "GlobalDocumentDB",
+            "identity": {
+                "type": "None"
+            },
+            "properties": {
+                "publicNetworkAccess": "Enabled",
+                "enableAutomaticFailover": false,
+                "enableMultipleWriteLocations": false,
+                "isVirtualNetworkFilterEnabled": false,
+                "virtualNetworkRules": [],
+                "disableKeyBasedMetadataWriteAccess": false,
+                "enableFreeTier": false,
+                "enableAnalyticalStorage": false,
+                "createMode": "Default",
+                "databaseAccountOfferType": "Standard",
+                "networkAclBypass": "None",
+                "consistencyPolicy": {
+                    "defaultConsistencyLevel": "Session",
+                    "maxIntervalInSeconds": 5,
+                    "maxStalenessPrefix": 100
+                },
+                "locations": [
+                    {
+                        "locationName": "West Europe",
+                        "provisioningState": "Succeeded",
+                        "failoverPriority": 0,
+                        "isZoneRedundant": false
+                    }
+                ],
+                "cors": [],
+                "capabilities": [
+                    {
+                        "name": "EnableServerless"
+                    }
+                ],
+                "ipRules": [],
+                "backupPolicy": {
+                    "type": "Periodic",
+                    "periodicModeProperties": {
+                        "backupIntervalInMinutes": 240,
+                        "backupRetentionIntervalInHours": 8,
+                        "backupStorageRedundancy": "Geo"
+                    }
+                },
+                "networkAclBypassResourceIds": []
+            }
+        },
+
+        // CosmosDB Database
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+            "apiVersion": "2021-03-01-preview",
+            "name": "[concat(variables('cosmosDbAccountName'), '/FoodDeliveryDB')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "FoodDeliveryDB"
+                }
+            }
+        },
+
+        // CosmosDB Orders Container
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+            "apiVersion": "2021-03-01-preview",
+            "name": "[concat(variables('cosmosDbAccountName'), '/FoodDeliveryDB/Orders')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('cosmosDbAccountName'), 'FoodDeliveryDB')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "Orders",
+                    "indexingPolicy": {
+                        "indexingMode": "consistent",
+                        "automatic": true,
+                        "includedPaths": [
+                            {
+                                "path": "/restaurant/id/?"
+                            },
+                            {
+                                "path": "/customer/id/?"
+                            },
+                            {
+                                "path": "/orderStatus/?"
+                            }
+                        ],
+                        "excludedPaths": [
+                            {
+                                "path": "/*"
+                            },
+                            {
+                                "path": "/\"_etag\"/?"
+                            }
+                        ]
+                    },
+                    "partitionKey": {
+                        "paths": [
+                            "/id"
+                        ],
+                        "kind": "Hash"
+                    },
+                    "uniqueKeyPolicy": {
+                        "uniqueKeys": []
+                    },
+                    "conflictResolutionPolicy": {
+                        "mode": "LastWriterWins",
+                        "conflictResolutionPath": "/_ts"
+                    }
+                }
+            }
+        },
+
+        // CosmosDB Restaurants Container
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+            "apiVersion": "2021-03-01-preview",
+            "name": "[concat(variables('cosmosDbAccountName'), '/FoodDeliveryDB/Restaurants')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('cosmosDbAccountName'), 'FoodDeliveryDB')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName'))]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "Restaurants",
+                    "indexingPolicy": {
+                        "indexingMode": "consistent",
+                        "automatic": true,
+                        "includedPaths": [],
+                        "excludedPaths": [
+                            {
+                                "path": "/*"
+                            },
+                            {
+                                "path": "/\"_etag\"/?"
+                            }
+                        ]
+                    },
+                    "partitionKey": {
+                        "paths": [
+                            "/id"
+                        ],
+                        "kind": "Hash"
+                    },
+                    "uniqueKeyPolicy": {
+                        "uniqueKeys": []
+                    },
+                    "conflictResolutionPolicy": {
+                        "mode": "LastWriterWins",
+                        "conflictResolutionPath": "/_ts"
+                    }
+                }
+            }
+        },
+
+        // Service bus namespace
+        {
+            "type": "Microsoft.ServiceBus/namespaces",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('serviceBusNamespaceName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Basic",
+                "tier": "Basic"
+            },
+            "properties": {
+                "zoneRedundant": false
+            }
+        },
+
+        // Service bus AuthorizationRules
+        {
+            "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+            "apiVersion": "2017-04-01",
+            "name": "[concat(variables('serviceBusNamespaceName'), '/RootManageSharedAccessKey')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "rights": [
+                    "Listen",
+                    "Manage",
+                    "Send"
+                ]
+            }
+        },
+
+        // Service bus order accepted queue
+        {
+            "type": "Microsoft.ServiceBus/namespaces/queues",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('order-accepted-queue')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "lockDuration": "PT30S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "enableBatchedOperations": true,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 10,
+                "status": "Active",
+                "enablePartitioning": false,
+                "enableExpress": false
+            }
+        },
+
+        // Service bus order canceled queue
+        {
+            "type": "Microsoft.ServiceBus/namespaces/queues",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('order-canceled-queue')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "lockDuration": "PT30S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "enableBatchedOperations": true,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 10,
+                "status": "Active",
+                "enablePartitioning": false,
+                "enableExpress": false
+            }
+        },
+
+        // Service bus order delivered queue
+        {
+            "type": "Microsoft.ServiceBus/namespaces/queues",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('order-delivered-queue')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "lockDuration": "PT30S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "enableBatchedOperations": true,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 10,
+                "status": "Active",
+                "enablePartitioning": false,
+                "enableExpress": false
+            }
+        },
+
+        // Service bus order new queue
+        {
+            "type": "Microsoft.ServiceBus/namespaces/queues",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('order-new-queue')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "lockDuration": "PT30S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "enableBatchedOperations": true,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 10,
+                "status": "Active",
+                "enablePartitioning": false,
+                "enableExpress": false
+            }
+        },
+
+        // Service bus order out for delivery queue
+        {
+            "type": "Microsoft.ServiceBus/namespaces/queues",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('order-outfordelivery-queue')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+            ],
+            "properties": {
+                "lockDuration": "PT30S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "enableBatchedOperations": true,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 10,
+                "status": "Active",
+                "enablePartitioning": false,
+                "enableExpress": false
+            }
+        },
+
+        // Mock orders storage account
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "[variables('mockOrdersStorageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage"
+        },
+
+        // Orders storage account
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "[variables('orderStorageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage"
+        },
+
+        // Orchestrators storage account
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "[variables('orchestratorStorageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage"
+        },
+
+        // Restaurants storage account
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "[variables('restaurantStorageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage"
+        },
+
+        // Dynamic App service plan
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2020-06-01",
+            "name": "[variables('hostingPlanName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+            },
+            "properties": {
+                "name": "[parameters('appName')]",
+                "computeMode": "Dynamic"
+            }
+        },
+
+        // Orders function app
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-06-01",
+            "name": "[variables('ordersAppName')]",
+            "location": "[parameters('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('orderStorageAccountName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('orderStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('orderStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('orderStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('orderStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('ordersAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~2"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~10"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components', variables('applicationInsightsName')), '2020-02-02-preview').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "CosmosDbConnectionString",
+                            "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName')), '2019-12-12').connectionStrings[0].connectionString]"
+                        },
+                        {
+                            "name": "CosmosDbFoodDeliveryDatabaseName",
+                            "value": "FoodDeliveryDB"
+                        },
+                        {
+                            "name": "CosmosDbOrderContainerName",
+                            "value": "Orders"
+                        },
+                        {
+                            "name": "CosmosDbRestaurantContainerName",
+                            "value": "Restaurants"
+                        },
+                        {
+                            "name": "ServiceBusConnection",
+                            "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', variables('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), '2015-08-01').primaryConnectionString]"
+                        },
+                        {
+                            "name": "OrderAcceptedQueue",
+                            "value": "order-accepted-queue"
+                        },
+                        {
+                            "name": "OrderOutForDeliveryQueue",
+                            "value": "order-outfordelivery-queue"
+                        },
+                        {
+                            "name": "OrderDeliveredQueue",
+                            "value": "order-delivered-queue"
+                        },
+                        {
+                            "name": "OrderNewQueue",
+                            "value": "order-new-queue"
+                        },
+                        {
+                            "name": "OrderCanceledQueue",
+                            "value": "order-canceled-queue"
+                        }                        
+                    ]
+                }
+            }
+        },
+
+        // Orchestrators function app
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-06-01",
+            "name": "[variables('orchestratorAppName')]",
+            "location": "[parameters('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('orchestratorStorageAccountName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('orchestratorStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('orchestratorStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('orchestratorStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('orchestratorStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('orchestratorAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~2"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~10"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components', variables('applicationInsightsName')), '2020-02-02-preview').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "CosmosDbConnectionString",
+                            "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName')), '2019-12-12').connectionStrings[0].connectionString]"
+                        },
+                        {
+                            "name": "CosmosDbFoodDeliveryDatabaseName",
+                            "value": "FoodDeliveryDB"
+                        },
+                        {
+                            "name": "CosmosDbOrderContainerName",
+                            "value": "Orders"
+                        },
+                        {
+                            "name": "CosmosDbRestaurantContainerName",
+                            "value": "Restaurants"
+                        },
+                        {
+                            "name": "ServiceBusConnection",
+                            "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', variables('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), '2015-08-01').primaryConnectionString]"
+                        },
+                        {
+                            "name": "OrderAcceptedQueue",
+                            "value": "order-accepted-queue"
+                        },
+                        {
+                            "name": "OrderOutForDeliveryQueue",
+                            "value": "order-outfordelivery-queue"
+                        },
+                        {
+                            "name": "OrderDeliveredQueue",
+                            "value": "order-delivered-queue"
+                        },
+                        {
+                            "name": "OrderNewQueue",
+                            "value": "order-new-queue"
+                        },
+                        {
+                            "name": "OrderCanceledQueue",
+                            "value": "order-canceled-queue"
+                        },
+                        {
+                            "name": "HostEndpoint",
+                            "value": "[concat('https://', variables('ordersAppName'), '.azurewebsites.net/api')]"
+                        }
+                    ]
+                }
+            }
+        },
+
+        // Restaurants function app
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-06-01",
+            "name": "[variables('restaurantsAppName')]",
+            "location": "[parameters('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('restaurantStorageAccountName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('restaurantStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('restaurantStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('restaurantStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('restaurantStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('restaurantsAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~2"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~10"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components', variables('applicationInsightsName')), '2020-02-02-preview').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "CosmosDbConnectionString",
+                            "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosDbAccountName')), '2019-12-12').connectionStrings[0].connectionString]"
+                        },
+                        {
+                            "name": "CosmosDbFoodDeliveryDatabaseName",
+                            "value": "FoodDeliveryDB"
+                        },
+                        {
+                            "name": "CosmosDbOrderContainerName",
+                            "value": "Orders"
+                        },
+                        {
+                            "name": "CosmosDbRestaurantContainerName",
+                            "value": "Restaurants"
+                        }
+                    ]
+                }
+            }
+        },
+
+        // Mock orders function app
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-06-01",
+            "name": "[variables('mockOrdersAppName')]",
+            "location": "[parameters('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('mockOrdersStorageAccountName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('mockOrdersStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('mockOrdersStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('mockOrdersStorageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('mockOrdersStorageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('mockOrdersAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~2"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~10"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components', variables('applicationInsightsName')), '2020-02-02-preview').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "OrderHostEndpoint",
+                            "value": "[concat('https://', variables('ordersAppName'), '.azurewebsites.net/api')]"
+                        },
+                          {
+                            "name": "RestaurantHostEndpoint",
+                            "value": "[concat('https://', variables('restaurantsAppName'), '.azurewebsites.net/api')]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "microsoft.insights/components",
+            "apiVersion": "2020-02-02-preview",
+            "name": "[variables('applicationInsightsName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('ordersAppName')))]": "Resource",
+                "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('orchestratorAppName')))]": "Resource",
+                "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('mockOrdersAppName')))]": "Resource",
+                "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('restaurantsAppName')))]": "Resource"
+            },
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web",
+                "Flow_Type": "Bluefield",
+                "Request_Source": "rest",
+                "SamplingPercentage": 50,
+                "IngestionMode": "ApplicationInsights",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+            }
+        }
+    ]
+}
