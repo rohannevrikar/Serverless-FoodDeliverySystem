@@ -51,6 +51,7 @@ namespace FunctionApp.Orders
         {
             string requestBody = new StreamReader(req.Body).ReadToEnd();
             Order order = JsonConvert.DeserializeObject<Order>(requestBody);
+            log.LogWarning($"Placing new order...{order.Id}");
             return await AddToQueue(log, order, serviceBusQueue);
         }
 
@@ -65,6 +66,7 @@ namespace FunctionApp.Orders
                 Id = "{orderId}",
                 PartitionKey = "{orderId}")] Order order, ILogger log)
         {
+            log.LogWarning($"Accepting order...{order.Id}");
             return await AddToQueue(log, order, serviceBusQueue);
         }
 
@@ -79,6 +81,7 @@ namespace FunctionApp.Orders
                 Id = "{orderId}",
                 PartitionKey = "{orderId}")] Order order, ILogger log)
         {
+            log.LogWarning($"Picking up order...{order.Id}");
             return await AddToQueue(log, order, serviceBusQueue);
         }
 
@@ -93,6 +96,7 @@ namespace FunctionApp.Orders
                 Id = "{orderId}",
                 PartitionKey = "{orderId}")] Order order, ILogger log)
         {
+            log.LogWarning($"Delivering order...{order.Id}");
             return await AddToQueue(log, order, serviceBusQueue);
         }
         private async Task<ActionResult> AddToQueue(ILogger log, Order order, IAsyncCollector<dynamic> serviceBusQueue)

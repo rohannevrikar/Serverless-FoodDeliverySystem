@@ -35,6 +35,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
             {
                 await context.CallActivityAsync("UpsertOrder", order);
 
+                log.LogWarning($"Order placed...{order.Id}");
+
                 await context.CallActivityAsync("NotifyRestaurant", order);
 
                 Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/accepted/{order.Id}");
@@ -93,7 +95,10 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 
                 await context.CallActivityAsync("UpsertOrder", order);
 
+                log.LogWarning($"Order accepted...{order.Id}");
+
                 await context.CallActivityAsync("NotifyCustomer", order);
+
 
                 Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/outForDelivery/{order.Id}");
 
@@ -151,6 +156,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 
                 await context.CallActivityAsync("UpsertOrder", order);
 
+                log.LogWarning($"Order picked up...{order.Id}");
+
                 await context.CallActivityAsync("NotifyCustomer", order);
 
                 Uri uri = new Uri($"{_configuration["HostEndpoint"]}/orders/delivered/{order.Id}");
@@ -169,6 +176,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                         order.OrderStatus = OrderStatus.Delivered;
 
                         await context.CallActivityAsync("UpsertOrder", order);
+
+                        log.LogWarning($"Order delivered...{order.Id}");
 
                         await context.CallActivityAsync("NotifyCustomer", order);
 
@@ -210,15 +219,18 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
                 ConnectionStringSetting = "CosmosDbConnectionString")] out dynamic document,
        ILogger log)
         {
-            document = order;
-            //TODO: Send notification to customer
+            log.LogWarning($"Upserting order...{order.Id}");
 
+            document = order;
+
+            //TODO: Send notification to customer
         }
 
         [FunctionName("NotifyRestaurant")]
         public static void NotifyRestaurant([ActivityTrigger] Order order,
             ILogger log)
         {
+            log.LogWarning($"Notifying restaurant...{order.Id}");
 
             //TODO: Send notification to restaurant
 
@@ -228,6 +240,8 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         public static void NotifyCustomer([ActivityTrigger] Order order,
               ILogger log)
         {
+            log.LogWarning($"Notifying customer...{order.Id}");
+
             //TODO: Send notification to customer
         }
         #endregion       

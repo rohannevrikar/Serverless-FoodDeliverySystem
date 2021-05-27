@@ -46,6 +46,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
+                log.LogWarning($"Raising event to accept order...{order.Id}");
                 string instanceId = order.Id;
                 await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_ACCEPT_EVENT);
             }
@@ -70,6 +71,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
+                log.LogWarning($"Raising event to pick up order...{order.Id}");
                 string instanceId = $"{order.Id}-accepted";
                 await context.RaiseEventAsync(instanceId, Constants.RESTAURANT_ORDER_OUTFORDELIVERY_EVENT);
             }
@@ -95,6 +97,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
         {
             try
             {
+                log.LogWarning($"Raising event to deliver order...{order.Id}");
                 string instanceId = $"{order.Id}-out-for-delivery";
                 await context.RaiseEventAsync(instanceId, Constants.DELIVERY_ORDER_DELIVERED_EVENT);
             }
@@ -122,6 +125,7 @@ namespace ServerlessFoodDelivery.FunctionApp.Orchestrators
 
                 if (reportStatus == null || reportStatus.RuntimeStatus != OrchestrationRuntimeStatus.Running)
                 {
+                    log.LogWarning($"Staring orchestration to place order...{order.Id}");
                     await context.StartNewAsync("OrderPlacedOrchestrator", instanceId, order);
                 }
             }

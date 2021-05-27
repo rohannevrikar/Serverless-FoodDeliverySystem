@@ -64,12 +64,18 @@ foreach($functionApp in $functionApps){
     [io.compression.zipfile]::CreateFromDirectory($publishFolder, $publishZip)
 
     $functionAppName = ""
-    if($projectName -eq "ServerlessFoodDelivery.FunctionApp.Mock") {$functionAppName = "fds-mock"}
+
+    if($projectName -eq "ServerlessFoodDelivery.FunctionApp.Mock") 
+    {
+        $functionAppName = "fds-mock"
+        az functionapp stop --name $functionAppName --resource-group $ResourceGroupName #To stop mock orders at the time of deployment
+    }
+
     if($projectName -eq "ServerlessFoodDelivery.FunctionApp.Orchestrators") {$functionAppName = "fds-orchestrators"}
     if($projectName -eq "ServerlessFoodDelivery.FunctionApp.Orders") {$functionAppName = "fds-orders"}
     if($projectName -eq "ServerlessFoodDelivery.FunctionApp.Restaurants") {$functionAppName = "fds-restaurants"}
 
-    az functionapp deployment source config-zip -g $ResourceGroupName -n $functionAppName --src $publishZip
+    az functionapp deployment source config-zip --resource-group $ResourceGroupName --name $functionAppName --src $publishZip
    
 }
 
