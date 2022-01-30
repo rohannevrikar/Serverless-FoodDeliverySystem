@@ -5,7 +5,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -29,7 +31,14 @@ namespace ServerlessFoodDelivery.FunctionApp.Mock
         public async Task RunsEveryMinute([TimerTrigger("0 */1 * * * *")] TimerInfo timerInfo, ILogger log)
         {
           
-            PrepareAndPlaceOrder(log, 60); 
+           // PrepareAndPlaceOrder(log, 60); 
+        }
+
+        [FunctionName("PlaceNewOrder")]
+        public void PlaceNewOrder([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "new")]
+        HttpRequest req, ILogger log)
+        {
+            PrepareAndPlaceOrder(log, 1);
         }
 
         public async void PrepareAndPlaceOrder(ILogger log, int numberOfOrdersToBePlaced)
